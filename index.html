@@ -187,11 +187,176 @@ pre.json{font:12px/1.5 var(--mono);background:var(--soft);border:1px solid var(-
 @media print{body{background:#fff!important;padding:0!important}.rpt{box-shadow:none;border:0;max-width:none;padding:0}.rpt .rs{break-inside:auto}.fig,.kpi,table.t tr,.interp{break-inside:avoid}}
 
 </style>
+<style id="fxcss">
+/* Temas de colores sólidos (se aplican por data-theme); acento y paleta de gráficos se ajustan desde JS. */
+:root[data-theme="scada"]{--bg:#0d1117;--panel:#151b23;--fg:#d9e2ec;--mut:#8b98a9;--line:#2a3441;--soft:#1b232d;--ac:#22d3a0;--acfg:#04120d;--c1:#36c5f0;--c2:#ffb020;--c3:#2fd36f;--c4:#ff5d4d;--c5:#8a97a8;--c6:#c792ea;--good:#2fd36f;--bad:#ff5d4d;--warn:#ffb020;color-scheme:dark}
+:root[data-theme="marino"]{--bg:#0a1a33;--panel:#0f2547;--fg:#e8f0ff;--mut:#9db3d6;--line:#244273;--soft:#13305a;--ac:#4da3ff;--acfg:#04101f;--c1:#5cc8ff;--c2:#ffc857;--c3:#4ee1a0;--c4:#ff8a65;--c5:#9db3d6;--c6:#f19ad6;--good:#4ee1a0;--bad:#ff7a7a;--warn:#ffc857;color-scheme:dark}
+:root[data-theme="grafito"]{--bg:#1b1c1f;--panel:#25272b;--fg:#ececec;--mut:#a0a3aa;--line:#3a3d43;--soft:#2e3035;--ac:#ffb020;--acfg:#1b1c1f;--c1:#5ec2f2;--c2:#ffb020;--c3:#46d39a;--c4:#ff7a59;--c5:#a0a3aa;--c6:#e29ad0;--good:#46d39a;--bad:#ff7a7a;--warn:#ffb020;color-scheme:dark}
+:root[data-theme="hmi"]{--bg:#e3efe8;--panel:#f6fbf8;--fg:#10261b;--mut:#4c6558;--line:#bcd2c5;--soft:#d9e8df;--ac:#0f7a4a;--acfg:#ffffff;--c1:#0072b2;--c2:#d98e00;--c3:#008a64;--c4:#c8501a;--c5:#7b8a82;--c6:#b8609a;--good:#0a7d4f;--bad:#c62f2f;--warn:#a35f00;color-scheme:light}
+:root[data-theme="arena"]{--bg:#f0ebe0;--panel:#fffdf8;--fg:#2a2118;--mut:#6b5f50;--line:#d8cfbd;--soft:#e8e1d2;--ac:#b45309;--acfg:#ffffff;--c1:#0072b2;--c2:#c27a00;--c3:#008a64;--c4:#c8501a;--c5:#8a8478;--c6:#b8609a;--good:#0a7d4f;--bad:#c62f2f;--warn:#a35f00;color-scheme:light}
+:root[data-theme="light"]{color-scheme:light}
+body{transition:background-color .35s,color .35s}
+.panel,.top,#nav,input,select,textarea,.kpi,.tile{transition:background-color .35s,border-color .25s,color .25s}
+
+/* ---------- cabecera, pie, marca ---------- */
+.brand small{display:block;font:500 .66rem var(--sans);color:var(--mut);margin-top:2px;letter-spacing:.02em}
+.brand .bt{display:flex;flex-direction:column;min-width:0}
+.brand svg path:first-child{stroke-dasharray:90;stroke-dashoffset:0;animation:draw 2.4s ease-out}
+.top .btn.on{background:var(--ac);color:var(--acfg);border-color:var(--ac)}
+#siteFoot{padding:18px clamp(16px,3vw,40px);border-top:1px solid var(--line);color:var(--mut);font-size:.8rem;text-align:center}
+
+/* ---------- botones: movimiento ---------- */
+.btn,.ni,.swb,.seg button,.chipf{position:relative;overflow:hidden;transition:transform .16s cubic-bezier(.2,.8,.3,1.4),box-shadow .22s,background-color .2s,border-color .2s,color .2s;-webkit-tap-highlight-color:transparent}
+.btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 18px -10px var(--ac)}
+.btn:active:not(:disabled){transform:translateY(0) scale(.95);box-shadow:none}
+.btn.pri::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.28) 50%,transparent 65%);transform:translateX(-120%);pointer-events:none}
+.btn.pri:hover::after{transform:translateX(120%);transition:transform .7s}
+.ni:hover{transform:translateX(3px)}
+.ni.on{box-shadow:inset 3px 0 0 rgba(255,255,255,.55)}
+.rip{position:absolute;border-radius:50%;background:currentColor;opacity:.28;transform:scale(0);pointer-events:none;animation:ripple .62s ease-out forwards}
+.btn[id$="-run"]:disabled::before,#runAll:disabled::before,.tile .tact:disabled::before{content:"";width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite;flex:none}
+.btn.flash{animation:okflash .9s ease-out}
+.btn.flasherr{animation:errshake .5s}
+.badge.bump{animation:bump .6s cubic-bezier(.3,1.6,.5,1)}
+@keyframes ripple{to{transform:scale(1);opacity:0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes okflash{0%{box-shadow:0 0 0 0 var(--good)}100%{box-shadow:0 0 0 16px transparent}}
+@keyframes errshake{20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+@keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.6)}100%{transform:scale(1)}}
+@keyframes draw{from{stroke-dashoffset:90}to{stroke-dashoffset:0}}
+
+/* ---------- entradas de página y resultados ---------- */
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.page:not([hidden])>.mod>*,#home:not([hidden])>*,#scada:not([hidden])>*,#informe:not([hidden])>*{animation:rise .5s cubic-bezier(.2,.7,.2,1) backwards}
+.page>.mod>*:nth-child(2),#home>*:nth-child(2),#scada>*:nth-child(2),#informe>*:nth-child(2){animation-delay:.06s}
+.page>.mod>*:nth-child(3),#home>*:nth-child(3),#scada>*:nth-child(3),#informe>*:nth-child(3){animation-delay:.12s}
+.page>.mod>*:nth-child(4),#home>*:nth-child(4),#scada>*:nth-child(4),#informe>*:nth-child(4){animation-delay:.18s}
+.page>.mod>*:nth-child(5),#home>*:nth-child(5),#scada>*:nth-child(5),#informe>*:nth-child(5){animation-delay:.24s}
+.page>.mod>*:nth-child(n+6),#home>*:nth-child(n+6),#scada>*:nth-child(n+6),#informe>*:nth-child(n+6){animation-delay:.3s}
+.res>*{animation:rise .45s cubic-bezier(.2,.7,.2,1) backwards}
+.res>*:nth-child(2){animation-delay:.05s}.res>*:nth-child(3){animation-delay:.1s}.res>*:nth-child(4){animation-delay:.15s}.res>*:nth-child(5){animation-delay:.2s}.res>*:nth-child(n+6){animation-delay:.25s}
+.res svg{animation:fade .7s .1s backwards}
+.kpi{transition:transform .2s,border-color .2s,box-shadow .2s}
+.kpi:hover{transform:translateY(-3px);border-color:var(--ac);box-shadow:0 10px 20px -14px var(--ac)}
+.panel:hover{border-color:color-mix(in srgb,var(--ac) 35%,var(--line))}
+.tag{transition:transform .15s,border-color .15s,background .15s}.tag:hover{transform:translateY(-1px);background:var(--soft)}
+.nomotion *,.nomotion *::before,.nomotion *::after{animation:none!important;transition:none!important}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* ---------- inicio ---------- */
+.hero{position:relative;max-width:none;padding-top:14px}
+.hero>*{max-width:780px}
+.sigline{display:block;width:100%;max-width:780px;height:34px;margin:0 0 10px;opacity:.7}
+.sigline polyline{fill:none;stroke:var(--ac);stroke-width:2;vector-effect:non-scaling-stroke;stroke-dasharray:900;stroke-dashoffset:900;animation:sigrun 4.5s linear infinite}
+@keyframes sigrun{to{stroke-dashoffset:-900}}
+.byline{display:flex;align-items:center;gap:12px;margin:14px 0 0;line-height:1.25}
+.byline small{color:var(--mut)}
+.avatar{width:42px;height:42px;border-radius:50%;background:var(--ac);color:var(--acfg);display:grid;place-items:center;font:700 .95rem var(--disp);flex:none}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:22px;max-width:760px!important}
+.stats div{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column}
+.stats div:nth-child(2){border-left-color:var(--c3)}.stats div:nth-child(3){border-left-color:var(--c2)}.stats div:nth-child(4){border-left-color:var(--c4)}
+.stats b{font:700 1.7rem/1.1 var(--mono);font-variant-numeric:tabular-nums}.stats span{font-size:.76rem;color:var(--mut)}
+
+/* ---------- drawer de ajustes ---------- */
+.back{position:fixed;inset:0;background:rgba(5,10,20,.55);z-index:60;opacity:0;transition:opacity .25s}.back.open{opacity:1}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);background:var(--panel);border-left:1px solid var(--line);z-index:70;display:flex;flex-direction:column;transform:translateX(105%);transition:transform .26s cubic-bezier(.2,.8,.3,1);box-shadow:-20px 0 40px -30px #000}
+.drawer.open{transform:none}
+.drawer[hidden]{display:none}
+.drawer>header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
+.drawer h2{font:700 1.2rem var(--disp);margin:0}
+.drawer .body{overflow-y:auto;padding:6px 18px 40px}
+.drawer section{padding:14px 0;border-bottom:1px solid var(--line)}
+.drawer h3{font:600 .88rem var(--sans);margin:0 0 8px}
+.form.one{grid-template-columns:1fr}
+.swgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}
+.swb{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);cursor:pointer;font:500 .76rem var(--sans);text-align:left}
+.swb.on{border-color:var(--ac);box-shadow:0 0 0 2px var(--ac)}
+.swb:hover{transform:translateY(-2px)}
+.sw1{display:block;width:100%;height:22px;border-radius:5px}
+.sw2{display:block;width:100%;height:26px;border-radius:5px;border:2px solid;position:relative}.sw2 b{position:absolute;right:4px;bottom:4px;width:34%;height:7px;border-radius:2px}
+.swp{display:flex;width:100%;height:22px;border-radius:5px;overflow:hidden}.swp b{flex:1}
+
+/* ---------- SCADA ---------- */
+.scada-h{position:relative}
+.statusbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:3px 11px;border:1px solid var(--line);border-radius:14px;font:600 .74rem var(--mono);background:var(--panel);color:var(--fg);white-space:nowrap}
+.pill.ok{border-color:var(--good);color:var(--good)}.pill.bad{border-color:var(--bad);color:var(--bad)}
+.pill.live{border-color:var(--bad);color:var(--bad);animation:blink 1.4s infinite}
+.led{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--c5);flex:none;margin-right:7px;vertical-align:middle;box-shadow:0 0 0 2px color-mix(in srgb,var(--c5) 30%,transparent)}
+.pill .led{margin:0}
+.led.ok{background:var(--good);box-shadow:0 0 8px var(--good);animation:blink 2.2s infinite}
+.led.warn{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+.led.alm{background:var(--bad);box-shadow:0 0 10px var(--bad);animation:blink .7s infinite}
+@keyframes blink{50%{opacity:.35}}
+.gauges{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 16px}
+.gauge{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 8px 10px;text-align:center;position:relative;transition:transform .2s,border-color .2s}
+.gauge:hover{transform:translateY(-3px);border-color:var(--ac)}
+.gauge svg{width:100%;max-width:150px;display:block;margin:0 auto -22px}
+.gbg{fill:none;stroke:var(--soft);stroke-width:9;stroke-linecap:round}
+.gfg{fill:none;stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1)}
+.gv{display:block;font:700 1.45rem/1.1 var(--mono);position:relative;font-variant-numeric:tabular-nums}
+.gl{display:block;font:600 .72rem var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-top:3px}
+.gs{display:block;font-size:.72rem;color:var(--mut)}
+.filters{position:relative}
+.frow{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:flex-end;margin-bottom:12px}.frow:last-of-type{margin-bottom:0}
+.ctl{display:flex;flex-direction:column;gap:4px;min-width:0}.ctl.grow{flex:1 1 260px}
+.cl{font:600 .68rem var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--bg)}
+.seg button{font:600 .78rem var(--sans);padding:6px 11px;border:0;border-right:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+.seg button:last-child{border-right:0}.seg button:hover{background:var(--soft)}
+.seg button.on{background:var(--ac);color:var(--acfg)}
+.chipsf{display:flex;flex-wrap:wrap;gap:6px}
+.chipf{display:inline-flex;align-items:center;gap:7px;font:600 .76rem var(--sans);padding:5px 11px;border:1px solid var(--line);border-radius:14px;background:var(--bg);color:var(--mut);cursor:pointer}
+.chipf i{width:9px;height:9px;border-radius:50%;background:var(--g,var(--ac));opacity:.35}
+.chipf.on{color:var(--fg);border-color:var(--g,var(--ac));background:color-mix(in srgb,var(--g,var(--ac)) 14%,var(--bg))}.chipf.on i{opacity:1}
+.chipf:hover{transform:translateY(-1px)}
+.chipf.all{border-style:dashed}
+.bulk{height:5px;border-radius:3px;background:var(--soft);margin-top:12px;overflow:hidden}.bulk i{display:block;height:100%;width:0;background:var(--ac);transition:width .35s}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin:0 0 20px}
+.tiles.compact{grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+.tiles.lista{grid-template-columns:1fr;gap:6px}
+.tile{position:relative;background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--g);border-radius:8px;padding:12px 12px 10px 14px;display:flex;flex-direction:column;gap:8px;animation:rise .4s calc(var(--i)*30ms) backwards;transition:transform .2s,box-shadow .2s,border-color .2s}
+.tile:hover{transform:translateY(-4px);box-shadow:0 14px 24px -18px var(--g);border-color:var(--g)}
+.tile .led{position:absolute;right:10px;top:12px;margin:0}
+.tile.s-ejecutado .led{background:var(--good);box-shadow:0 0 8px var(--good)}
+.tile.s-informe .led{background:var(--c1);box-shadow:0 0 8px var(--c1)}
+.tile.s-error .led{background:var(--bad);box-shadow:0 0 10px var(--bad);animation:blink .7s infinite}
+.tile .tg{font:600 .66rem var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--mut);margin:0;padding-right:20px}.tile .tg span{font-family:var(--mono);letter-spacing:0}
+.tile h4{font:700 .98rem/1.25 var(--disp);margin:3px 0}
+.tile .ts{margin:0;font-size:.76rem;color:var(--mut)}
+.tile .tbtn{display:flex;gap:6px;margin-top:auto}.tile .tbtn .btn{flex:1;justify-content:center}
+.tiles.compact .tile{padding:8px 10px}.tiles.compact .tile h4{font-size:.86rem}.tiles.compact .ts,.tiles.compact .tg{display:none}
+.tiles.lista .tile{flex-direction:row;align-items:center;border-top-width:1px;border-left:6px solid var(--g);padding:8px 14px}
+.tiles.lista .tile .led{position:static;order:-1}.tiles.lista .tb{flex:1;display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline}.tiles.lista .tile h4{margin:0}.tiles.lista .tbtn{margin:0}.tiles.lista .tbtn .btn{flex:none}
+.console{border-top:4px solid var(--c1)}
+.ch{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-bottom:8px}.ch h3{margin:0}
+.banner{margin-left:auto;padding:4px 12px;border-radius:5px;font:700 .78rem var(--sans);letter-spacing:.03em}
+.banner.ok{background:var(--good);color:#04120d}.banner.warn{background:var(--warn);color:#1b1200}.banner.alm{background:var(--bad);color:#fff;animation:blink .9s infinite}
+.trendbox{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px;margin:8px 0;overflow-x:auto}
+.trendbox svg{width:100%;min-width:560px;height:auto;display:block}
+.lbg{fill:var(--panel);stroke:var(--line)}
+.lane.lv-warn .lbg{stroke:var(--warn)}.lane.lv-alm .lbg{stroke:var(--bad);stroke-width:1.6}
+.zone{fill:var(--bad);opacity:.09}
+.trace{fill:none;stroke-width:1.8;stroke-linejoin:round}
+.lim{stroke-width:1;stroke-dasharray:5 4}.lim.warn{stroke:var(--warn)}.lim.alm{stroke:var(--bad)}
+.lt{font:600 9px var(--mono)}.lt.warn{fill:var(--warn)}.lt.alm{fill:var(--bad)}
+.dot{fill:var(--good);stroke:var(--panel);stroke-width:2}.dot.warn{fill:var(--warn)}.dot.alm{fill:var(--bad)}
+.tn{font:700 11px var(--mono);fill:var(--fg)}.tu{font:10px var(--sans);fill:var(--mut)}.tv{font:700 13px var(--mono);fill:var(--fg)}.ax{font:10px var(--mono);fill:var(--mut)}
+table.tags td.v{font-weight:700;font-size:.95rem}
+table.tags td input{width:78px;text-align:right;font:12px var(--mono);padding:3px 6px}
+td.st.ok{color:var(--good);font-weight:600}td.st.warn{color:var(--warn);font-weight:600}td.st.alm{color:var(--bad);font-weight:700}
+tr.off{opacity:.45}
+tr.lg-alm td:first-child{box-shadow:inset 3px 0 0 var(--bad)}tr.lg-warn td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
+@media (max-width:640px){.sigline{display:none}.brand small{display:none}.top .btn.sm{padding:5px 8px}.tiles.lista .tile{flex-wrap:wrap}}
+
+</style>
 <header class="top"><button id="menuBtn" class="btn sm menu" type="button" aria-expanded="false" aria-controls="nav">Menú</button>
-<a class="brand" href="#inicio"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M2 21C6 21 7 5 13 5s7 16 11 16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M2 21h22" stroke="currentColor" stroke-width="1.4" opacity=".5"/></svg><span>Laboratorio de Data Science</span></a>
-<span class="sp"></span><a class="btn sm" href="#informe">Informe</a><button id="themeBtn" class="btn sm ghost" type="button">Tema</button></header>
+<a class="brand" href="#inicio"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M2 21C6 21 7 5 13 5s7 16 11 16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M2 21h22" stroke="currentColor" stroke-width="1.4" opacity=".5"/></svg><span class="bt"><span id="brandName">Laboratorio de Data Science</span><small id="brandBy"></small></span></a>
+<span class="sp"></span><button id="sndBtn" class="btn sm ghost" type="button" aria-pressed="true">Sonido: sí</button><button id="themeBtn" class="btn sm ghost" type="button">Tema</button><button id="setBtn" class="btn sm" type="button" aria-haspopup="dialog">Ajustes</button><a class="btn sm" href="#informe">Informe</a></header>
 <div class="app"><nav id="nav" aria-label="Módulos"></nav>
-<main id="main"><div id="home" class="page" hidden></div><div id="informe" class="page" hidden></div><div id="pages"></div></main></div>
+<main id="main"><div id="home" class="page" hidden></div><div id="informe" class="page" hidden></div><div id="scada" class="page" hidden></div><div id="pages"></div></main></div>
+<footer id="siteFoot"></footer>
 <script>
 /* ===== Núcleo numérico ===== */
 const L = (function () {
@@ -885,37 +1050,33 @@ function mountModule(m, host) {
   const api = m.build(); // {form?: Form, run(out, vals), extra?: [DOM]}
   const out = h('div', { class: 'res', id: `${m.id}-out`, 'aria-live': 'polite' }), msg = h('div', { class: 'empty' }, 'Ajuste los parámetros y pulse «Calcular».');
   out.append(msg);
-  const head = h('header', { class: 'mh' }, h('div', null, h('p', { class: 'eyebrow' }, `${m.group} · Temario ${m.ref}`), h('h2', null, m.title)), h('p', { class: 'lead' }, m.lead || ''));
+  const head = h('header', { class: 'mh' }, h('div', null, h('p', { class: 'eyebrow' }, `${m.group} · Ref. ${m.ref}`), h('h2', null, m.title)), h('p', { class: 'lead' }, m.lead || ''));
   const rev = h('details', { class: 'panel rev', open: true }, h('summary', null, 'Reseña metodológica'), h('div', { class: 'revb', html: m.review }));
   const params = h('section', { class: 'panel' }, h('h3', null, 'Datos y parámetros'), api.form ? api.form.el : null, ...(api.extra || []));
   const btnRun = h('button', { type: 'button', class: 'btn pri', id: `${m.id}-run` }, 'Calcular'), btnAdd = h('button', { type: 'button', class: 'btn', id: `${m.id}-add`, disabled: true }, 'Agregar al informe');
   const state = { done: false }, cache = {};
   const run = async () => {
     btnRun.disabled = true; btnRun.textContent = 'Calculando…'; await new Promise(r => setTimeout(r, 30));
-    try { out.innerHTML = ''; const t0 = performance.now(); const vals = api.form ? api.form.get() : {}; cache.vals = vals; await api.run(out, vals); fixText(out); state.done = true; btnAdd.disabled = false; out.dataset.ms = Math.round(performance.now() - t0); $$('.t,.chart', out).forEach(() => { }); }
-    catch (e) { console.error(e); out.innerHTML = `<div class="err"><strong>No se pudo calcular.</strong> ${esc(e.message || String(e))}</div>`; btnAdd.disabled = true; state.done = false; }
+    try { out.innerHTML = ''; const t0 = performance.now(); const vals = api.form ? api.form.get() : {}; cache.vals = vals; await api.run(out, vals); state.done = true; btnAdd.disabled = false; out.dataset.ms = Math.round(performance.now() - t0); document.dispatchEvent(new CustomEvent('modrun', { detail: { id: m.id, ok: true, ms: +out.dataset.ms } })); }
+    catch (e) { console.error(e); out.innerHTML = `<div class="err"><strong>No se pudo calcular.</strong> ${esc(e.message || String(e))}</div>`; btnAdd.disabled = true; state.done = false; document.dispatchEvent(new CustomEvent('modrun', { detail: { id: m.id, ok: false, ms: 0 } })); }
     btnRun.disabled = false; btnRun.textContent = 'Calcular';
   };
   btnRun.onclick = run;
   btnAdd.onclick = () => {
-    const pv = Object.entries(cache.vals || {}).filter(([k, v]) => k !== 'data' && !/^(clientes|ventas|docs|corpus|html|logits|cands|arch|q)$/.test(k) && (typeof v === 'number' || typeof v === 'boolean' || (typeof v === 'string' && v.length <= 48) || Array.isArray(v))).map(([k, v]) => `${k} = ${Array.isArray(v) ? v.join(', ') : typeof v === 'number' ? F(v, 4) : v}`).join(' · ');
-    const sec = { id: Date.now() + Math.random().toString(36).slice(2, 6), mod: m.id, title: m.title, html: snapshot(out), note: '', params: pv, ts: new Date().toISOString() };
-    REPORT.sections.push(sec); saveReport(); updateBadge(); btnAdd.textContent = '✓ Agregado'; setTimeout(() => btnAdd.textContent = 'Agregar al informe', 1800); renderReportList();
+    const sec = { id: Date.now() + Math.random().toString(36).slice(2, 6), mod: m.id, title: m.title, html: snapshot(out), note: '', ts: new Date().toISOString() };
+    REPORT.sections.push(sec); saveReport(); updateBadge(); document.dispatchEvent(new CustomEvent('modadd', { detail: { id: m.id } })); btnAdd.textContent = '✓ Agregado'; setTimeout(() => btnAdd.textContent = 'Agregar al informe', 1800); renderReportList();
   };
   const bar = h('div', { class: 'actions' }, btnRun, btnAdd, h('a', { class: 'btn ghost', href: '#informe' }, 'Ver informe'));
   const code = m.code ? h('details', { class: 'panel code' }, h('summary', null, 'Código equivalente (Python / R)'), h('pre', null, h('code', null, m.code))) : null;
-  host.append(...[head, rev, params, bar, out, code].filter(Boolean));
+  host.append(head, rev, params, bar, out, code);
   m.autorun && run();
 }
 function updateBadge() { const b = $('#repCount'); if (b) { b.textContent = REPORT.sections.length; b.hidden = !REPORT.sections.length; } }
-
-function fixText(root) { const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) { if (n.nodeValue.includes('<0,0001')) n.nodeValue = n.nodeValue.replace(/=\s*<0,0001/g, '< 0,0001').replace(/<0,0001/g, '< 0,0001'); } }
 
 /* ===== Datos de ejemplo (generados con semilla fija) ===== */
 const csv = (head, rows) => head.join(',') + '\n' + rows.map(r => r.join(',')).join('\n');
 const r2 = (v, d = 2) => (+v.toFixed(d)).toString();
 const SAMPLES = {
-  colin() { const r = L.rng(19), rows = []; for (let i = 0; i < 70; i++) { const prod = 50 + r() * 50, temp = 15 + r() * 20, horas = 0.08 * prod + 12 + 2 * L.randn(r); const y = 120 + 3 * prod + 1.5 * temp + 3 * horas + L.randn(r) * 14; rows.push([r2(prod, 1), r2(prod + L.randn(r) * 1.5, 1), r2(temp, 1), r2(temp * 1.8 + 32 + L.randn(r) * 1.2, 1), r2(horas, 1), r2(L.randn(r), 2), r2(L.randn(r), 2), r2(y, 1)]); } return csv(['produccion', 'produccion_alt', 'temperatura', 'temp_sensor2', 'horas_op', 'ruido1', 'ruido2', 'consumo_kwh'], rows); },
   planta() { const r = L.rng(11), n = 60, rows = []; for (let i = 0; i < n; i++) { const prod = 50 + r() * 50, temp = 15 + r() * 20, horas = 0.08 * prod + 12 + 2 * L.randn(r), mant = Math.floor(r() * 4), turno = ['mañana', 'tarde', 'noche'][Math.floor(r() * 3)]; let y = 120 + 3.2 * prod + 1.5 * temp + 4 * horas - 6 * mant + (turno === 'noche' ? 25 : turno === 'tarde' ? 10 : 0) + L.randn(r) * (8 + prod / 12); if (i === 7) y += 140; if (i === 33) y -= 110; rows.push([r2(prod, 1), r2(temp, 1), r2(horas, 1), mant, turno, r2(y, 1)]); } return csv(['produccion', 'temperatura', 'horas_op', 'mantenciones', 'turno', 'consumo_kwh'], rows); },
   simple() { const r = L.rng(5), rows = []; for (let i = 0; i < 40; i++) { const x = 10 + r() * 40; rows.push([r2(x, 1), r2(20 + 2.4 * x + L.randn(r) * 9, 1)]); } return csv(['horas_capacitacion', 'productividad'], rows); },
   tiempos() { const r = L.rng(21), rows = []; for (let i = 0; i < 80; i++) { const v = Math.exp(4.2 + 0.5 * L.randn(r)); rows.push([r2(v, 1), ['norte', 'centro', 'sur'][Math.floor(r() * 3)], Math.floor(1 + r() * 8)]); } return csv(['tiempo_resp_ms', 'region', 'reintentos'], rows); },
@@ -943,7 +1104,7 @@ function design(tb, ycol, xnames, opt = {}) {
 const olsFit = (D, intercept = true) => L.ols(intercept ? L.withIntercept(D.X) : D.X, D.y, { intercept });
 const coefTable = (m, names, ci = 0.95, intercept = true) => { const tq = L.tppf(0.5 + ci / 2, m.df), nm = intercept ? ['(Intercepto)', ...names] : names; return tbl(['Término', 'Coef.', 'Error est.', 't', 'p-valor', '', `IC ${Math.round(ci * 100)}%`], nm.map((n, j) => [esc(n), m.b[j], m.se[j], m.t[j], P(m.p[j]), sig(m.p[j]), `[${F(m.b[j] - tq * m.se[j], 3)}; ${F(m.b[j] + tq * m.se[j], 3)}]`]), {}); };
 const fitStats = m => kpis([['R²', m.r2], ['R² ajustado', m.adj], ['Error estándar residual', m.sigma, `${m.df} g.l.`], ['F global', m.F, `p ${P(m.pF)}`], ['AIC', m.aic], ['BIC', m.bic]]);
-const qqSVG = (res, title) => { const n = res.length, s = L.sorted(res), sd = L.sd(res), mu = L.mean(res), th = Array.from(s, (_, i) => L.normppf((i + .5) / n)), pts = th.map((t, i) => ({ x: t, y: (s[i] - mu) / sd })), lim = ext(th.concat(pts.map(p => p.y)), .06); return plot({ title, xlab: 'Cuantiles teóricos N(0,1)', ylab: 'Residuos estandarizados', xlim: lim, ylim: lim, h: 320 }, a => path(lim, lim, a.sx, a.sy, 2, 1.5, '5 4') + dots(pts, a.sx, a.sy)); };
+const qqSVG = (res, title) => { const n = res.length, s = L.sorted(res), sd = L.sd(res), mu = L.mean(res), th = s.map((_, i) => L.normppf((i + .5) / n)), pts = th.map((t, i) => ({ x: t, y: (s[i] - mu) / sd })), lim = ext(th.concat(pts.map(p => p.y)), .06); return plot({ title, xlab: 'Cuantiles teóricos N(0,1)', ylab: 'Residuos estandarizados', xlim: lim, ylim: lim, h: 320 }, a => path(lim, lim, a.sx, a.sy, 2, 1.5, '5 4') + dots(pts, a.sx, a.sy)); };
 const resPlot = (fit, res, title) => scatterSVG(fit, res, { title, xlab: 'Valores ajustados', ylab: 'Residuos', h: 300, lines: [{ x: ext(fit), y: [0, 0], c: 2, w: 1.5, dash: '5 4' }] });
 
 /* ============================== FUNDAMENTOS ============================== */
@@ -1198,7 +1359,7 @@ reg({
   <ul><li><b>Ridge:</b> minimiza SCR + λΣβⱼ². Encoge los coeficientes sin anularlos; β̂ = (XᵀX + λI)⁻¹Xᵀy.</li><li><b>LASSO:</b> minimiza SCR + λΣ|βⱼ|. Lleva algunos coeficientes exactamente a cero (selección automática). Se resuelve por descenso de coordenadas.</li><li><b>LASSO por grupo:</b> penaliza la norma ‖β_g‖₂ de cada grupo, de modo que el grupo entra o sale completo (útil para variables indicadoras de una misma categórica).</li><li><b>PCR:</b> regresión sobre los k primeros componentes principales. <b>PLS:</b> componentes que maximizan la covarianza con y.</li><li>El parámetro (λ o k) se elige por <b>validación cruzada</b> k-fold; la regla de 1 error estándar prefiere el modelo más simple dentro de un error estándar del óptimo.</li></ul>`,
   code: `# Python\nfrom sklearn.linear_model import RidgeCV, LassoCV\nfrom sklearn.cross_decomposition import PLSRegression\nLassoCV(cv=5).fit(Z, y)\n# R\nlibrary(glmnet); cv.glmnet(X, y, alpha = 0)  # ridge;  alpha = 1 LASSO\nlibrary(grpreg); library(pls); pcr(y ~ ., ncomp = 4, validation = "CV")`,
   build() {
-    const form = Form('reg', [{ k: 'data', t: 'data', label: 'Datos', sample: SAMPLES.colin, rows: 7 }, { k: 'y', t: 'col', from: 'data', label: 'Variable respuesta', def: 'consumo_kwh' }, { k: 'x', t: 'cols', from: 'data', label: 'Variables explicativas' }, { k: 'folds', t: 'num', label: 'Pliegues de validación cruzada', val: 5, min: 3, max: 10 }, { k: 'ncomp', t: 'num', label: 'Componentes para PCR / PLS', val: 2, min: 1 }, { k: 'seed', t: 'num', label: 'Semilla aleatoria', val: 7 }]);
+    const form = Form('reg', [{ k: 'data', t: 'data', label: 'Datos', sample: SAMPLES.planta, rows: 7 }, { k: 'y', t: 'col', from: 'data', label: 'Variable respuesta', def: 'consumo_kwh' }, { k: 'x', t: 'cols', from: 'data', label: 'Variables explicativas' }, { k: 'folds', t: 'num', label: 'Pliegues de validación cruzada', val: 5, min: 3, max: 10 }, { k: 'ncomp', t: 'num', label: 'Componentes para PCR / PLS', val: 2, min: 1 }, { k: 'seed', t: 'num', label: 'Semilla aleatoria', val: 7 }]);
     return {
       form, run(out, v) {
         const tb = L.parseTable(v.data), D = design(tb, v.y, v.x), n = D.n, p = D.names.length, st = L.standardize(D.X), ym = L.mean(D.y), yc = D.y.map(t => t - ym), rnd = L.rng(v.seed), K = Math.round(v.folds), folds = L.kfold(n, K, rnd);
@@ -1344,14 +1505,14 @@ const n2ip = n => [24, 16, 8, 0].map(s => Math.floor(n / 2 ** s) % 256).join('.'
 reg({
   id: 'aws', group: 'Cómputo intensivo', ref: 'Avanzado 2a y 12', title: 'Herramientas de AWS: VPC, IAM, S3, EC2, SageMaker',
   lead: 'Calculadora de subredes para una VPC, generador de políticas IAM de mínimo privilegio y estimador de costo y tiempo de cómputo.',
-  review: `<p>Los servicios del temario se relacionan así: <b>S3</b> almacena los datos; <b>IAM</b> controla quién puede hacer qué; <b>VPC</b> aísla la red; <b>EC2</b> aporta cómputo a demanda; <b>SageMaker</b> entrena y despliega modelos de ML.</p>
+  review: `<p>Los servicios se relacionan así: <b>S3</b> almacena los datos; <b>IAM</b> controla quién puede hacer qué; <b>VPC</b> aísla la red; <b>EC2</b> aporta cómputo a demanda; <b>SageMaker</b> entrena y despliega modelos de ML.</p>
   <ul><li><b>VPC/CIDR:</b> un bloque a.b.c.d/p contiene 2^(32−p) direcciones. AWS reserva 5 por subred (red, enrutador VPC, DNS, uso futuro y difusión), por lo que los hosts utilizables son 2^(32−p) − 5. El tamaño permitido de una VPC va de /16 a /28. Use rangos privados RFC 1918 (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16).</li><li><b>IAM:</b> principio de <i>mínimo privilegio</i>: permita solo las acciones y recursos necesarios; evite <code>"Action":"*"</code> y <code>"Resource":"*"</code>.</li><li><b>Costo:</b> costo = cantidad × tiempo × precio unitario. Los precios cambian por región y fecha: los valores precargados son <b>ejemplos editables</b>; confírmelos en la calculadora oficial de AWS.</li><li><b>Paralelismo:</b> tareas como el bootstrap escalan casi linealmente con los vCPU (ley de Amdahl: el tramo secuencial limita la ganancia).</li></ul>`,
   code: `# Python (boto3)\nimport boto3\ns3 = boto3.client("s3"); s3.upload_file("datos.csv", "mi-bucket", "datos/datos.csv")\nec2 = boto3.client("ec2"); ec2.create_vpc(CidrBlock="10.0.0.0/16")\n# SageMaker (SDK)\nfrom sagemaker.sklearn.estimator import SKLearn\nSKLearn(entry_point="train.py", instance_type="ml.m5.large", role=role, framework_version="1.2-1").fit({"train": "s3://mi-bucket/datos/"})`,
   build() {
     const form = Form('aws', [
       { k: 'tool', t: 'sel', label: 'Herramienta', opts: [['cidr', 'Subredes de una VPC (CIDR)'], ['iam', 'Política IAM de mínimo privilegio'], ['cost', 'Costo y tiempo de cómputo']] },
       { k: 'cidr', t: 'text', label: 'CIDR de la VPC', val: '10.0.0.0/16' }, { k: 'newp', t: 'num', label: 'Prefijo de cada subred', val: 20, min: 16, max: 28 },
-      { k: 'svc', t: 'sel', label: 'Servicio (IAM)', opts: [['s3', 'S3: lectura de un bucket'], ['s3rw', 'S3: lectura y escritura en un prefijo'], ['sm', 'SageMaker: entrenamiento'], ['ec2', 'EC2: iniciar y detener instancias']] }, { k: 'res', t: 'text', label: 'Nombre del bucket / recurso', val: 'diplomado-datos' },
+      { k: 'svc', t: 'sel', label: 'Servicio (IAM)', opts: [['s3', 'S3: lectura de un bucket'], ['s3rw', 'S3: lectura y escritura en un prefijo'], ['sm', 'SageMaker: entrenamiento'], ['ec2', 'EC2: iniciar y detener instancias']] }, { k: 'res', t: 'text', label: 'Nombre del bucket / recurso', val: 'laboratorio-datos' },
       { k: 'gb', t: 'num', label: 'S3: almacenamiento (GB-mes)', val: 200 }, { k: 'pgb', t: 'num', label: 'S3: precio USD por GB-mes (ejemplo)', val: 0.023 },
       { k: 'inst', t: 'num', label: 'EC2: instancias', val: 4, min: 1 }, { k: 'vcpu', t: 'num', label: 'EC2: vCPU por instancia', val: 8, min: 1 }, { k: 'ph', t: 'num', label: 'EC2: precio USD por hora y instancia (ejemplo)', val: 0.34 },
       { k: 'B', t: 'num', label: 'Tarea: n.º de réplicas (bootstrap)', val: 200000 }, { k: 'sec', t: 'num', label: 'Segundos de CPU por réplica', val: 0.4 }, { k: 'ser', t: 'num', label: 'Fracción secuencial (Amdahl)', val: 0.03, min: 0, max: 1 }, { k: 'smh', t: 'num', label: 'SageMaker: horas de entrenamiento', val: 6 }, { k: 'smp', t: 'num', label: 'SageMaker: USD por hora (ejemplo)', val: 0.23 }]);
@@ -1366,7 +1527,7 @@ reg({
           html += H4(`Subredes (${rows.length} de ${cnt})`) + tbl(['N.º', 'CIDR', 'Primera IP utilizable', 'Última IP utilizable', 'Broadcast (reservada)', 'Hosts'], rows);
           html += interp(`<p>La VPC <b>${n2ip(net)}/${p}</b> admite ${cnt} subredes /${np} de ${ss} direcciones, con ${Math.max(0, ss - 5)} IP utilizables cada una (AWS reserva 5). ${priv ? 'El bloque pertenece a un rango privado RFC 1918.' : '<b class="warn">El bloque no es un rango privado RFC 1918</b>: se recomienda usar 10.0.0.0/8, 172.16.0.0/12 o 192.168.0.0/16.'} ${p < 16 || p > 28 ? '<b class="bad">AWS exige VPC entre /16 y /28.</b>' : ''} Separe las subredes en al menos dos zonas de disponibilidad para tolerancia a fallas.</p>`);
         } else if (v.tool === 'iam') {
-          const b = v.res.trim() || 'mi-bucket'; const pol = { s3: { Version: '2012-10-17', Statement: [{ Sid: 'ListarBucket', Effect: 'Allow', Action: ['s3:ListBucket'], Resource: [`arn:aws:s3:::${b}`] }, { Sid: 'LeerObjetos', Effect: 'Allow', Action: ['s3:GetObject'], Resource: [`arn:aws:s3:::${b}/*`] }] }, s3rw: { Version: '2012-10-17', Statement: [{ Sid: 'ListarPrefijo', Effect: 'Allow', Action: ['s3:ListBucket'], Resource: [`arn:aws:s3:::${b}`], Condition: { StringLike: { 's3:prefix': ['datos/*'] } } }, { Sid: 'LeerEscribir', Effect: 'Allow', Action: ['s3:GetObject', 's3:PutObject'], Resource: [`arn:aws:s3:::${b}/datos/*`] }] }, sm: { Version: '2012-10-17', Statement: [{ Sid: 'Entrenar', Effect: 'Allow', Action: ['sagemaker:CreateTrainingJob', 'sagemaker:DescribeTrainingJob', 'sagemaker:StopTrainingJob'], Resource: ['arn:aws:sagemaker:*:*:training-job/*'] }, { Sid: 'PasarRol', Effect: 'Allow', Action: ['iam:PassRole'], Resource: ['arn:aws:iam::*:role/SageMakerExecutionRole'], Condition: { StringEquals: { 'iam:PassedToService': 'sagemaker.amazonaws.com' } } }] }, ec2: { Version: '2012-10-17', Statement: [{ Sid: 'IniciarDetener', Effect: 'Allow', Action: ['ec2:StartInstances', 'ec2:StopInstances'], Resource: ['arn:aws:ec2:*:*:instance/*'], Condition: { StringEquals: { 'aws:ResourceTag/Proyecto': 'diplomado' } } }, { Sid: 'Describir', Effect: 'Allow', Action: ['ec2:DescribeInstances'], Resource: ['*'] }] } }[v.svc];
+          const b = v.res.trim() || 'mi-bucket'; const pol = { s3: { Version: '2012-10-17', Statement: [{ Sid: 'ListarBucket', Effect: 'Allow', Action: ['s3:ListBucket'], Resource: [`arn:aws:s3:::${b}`] }, { Sid: 'LeerObjetos', Effect: 'Allow', Action: ['s3:GetObject'], Resource: [`arn:aws:s3:::${b}/*`] }] }, s3rw: { Version: '2012-10-17', Statement: [{ Sid: 'ListarPrefijo', Effect: 'Allow', Action: ['s3:ListBucket'], Resource: [`arn:aws:s3:::${b}`], Condition: { StringLike: { 's3:prefix': ['datos/*'] } } }, { Sid: 'LeerEscribir', Effect: 'Allow', Action: ['s3:GetObject', 's3:PutObject'], Resource: [`arn:aws:s3:::${b}/datos/*`] }] }, sm: { Version: '2012-10-17', Statement: [{ Sid: 'Entrenar', Effect: 'Allow', Action: ['sagemaker:CreateTrainingJob', 'sagemaker:DescribeTrainingJob', 'sagemaker:StopTrainingJob'], Resource: ['arn:aws:sagemaker:*:*:training-job/*'] }, { Sid: 'PasarRol', Effect: 'Allow', Action: ['iam:PassRole'], Resource: ['arn:aws:iam::*:role/SageMakerExecutionRole'], Condition: { StringEquals: { 'iam:PassedToService': 'sagemaker.amazonaws.com' } } }] }, ec2: { Version: '2012-10-17', Statement: [{ Sid: 'IniciarDetener', Effect: 'Allow', Action: ['ec2:StartInstances', 'ec2:StopInstances'], Resource: ['arn:aws:ec2:*:*:instance/*'], Condition: { StringEquals: { 'aws:ResourceTag/Proyecto': 'laboratorio' } } }, { Sid: 'Describir', Effect: 'Allow', Action: ['ec2:DescribeInstances'], Resource: ['*'] }] } }[v.svc];
           html += H4('Política generada') + `<pre class="json">${esc(JSON.stringify(pol, null, 2))}</pre>`;
           const wild = JSON.stringify(pol).includes('"*"') || JSON.stringify(pol).includes('"Resource":["*"]');
           html += H4('Lista de verificación de mínimo privilegio') + tbl(['Criterio', 'Estado'], [['Sin Action: "*"', '<b class="good">Cumple</b>'], ['Recursos acotados (ARN específicos)', wild ? '<b class="warn">Revisar: contiene Resource "*" (necesario en acciones Describe)</b>' : '<b class="good">Cumple</b>'], ['Condiciones adicionales (prefijo, etiquetas, servicio)', pol.Statement.some(s => s.Condition) ? '<b class="good">Incluye condiciones</b>' : '<b class="warn">Sin condiciones: considere agregarlas</b>'], ['Rol en lugar de usuarios con claves de acceso', 'Asigne la política a un rol IAM, no a claves de larga duración'], ['MFA y rotación de credenciales', 'Verificar fuera de la política']]);
@@ -1673,12 +1834,13 @@ reg({
   <ul><li><b>Funciones de activación:</b> ReLU max(0,z), tanh y sigmoide 1/(1+e⁻ᶻ). Sin no linealidad, varias capas equivalen a una sola.</li><li><b>Pérdida</b> (clasificación binaria): entropía cruzada −[y ln ŷ + (1−y) ln(1−ŷ)].</li><li><b>Retropropagación:</b> aplica la regla de la cadena desde la salida: δ⁽ᴸ⁾ = ŷ − y; δ⁽ˡ⁾ = (W⁽ˡ⁺¹⁾ᵀδ⁽ˡ⁺¹⁾) ⊙ f′(z⁽ˡ⁾). El gradiente es ∂ℒ/∂W⁽ˡ⁾ = δ⁽ˡ⁾a⁽ˡ⁻¹⁾ᵀ y los pesos se actualizan por descenso de gradiente con tasa η.</li><li><b>Número de parámetros:</b> Σ (n_{l−1}·n_l + n_l). Más parámetros que datos invita al sobreajuste: valide con datos de prueba.</li></ul>`,
   code: `# Python (PyTorch)\nimport torch.nn as nn\nnet = nn.Sequential(nn.Linear(2, 8), nn.Tanh(), nn.Linear(8, 8), nn.Tanh(), nn.Linear(8, 1), nn.Sigmoid())\n# opt = torch.optim.SGD(net.parameters(), lr=0.5); loss = nn.BCELoss()\n# R\nlibrary(keras); keras_model_sequential() |> layer_dense(8, "tanh") |> layer_dense(1, "sigmoid")`,
   build() {
+    const gens = { circles: () => $('#svm-data') && 0, };
     const mk = type => { const r = L.rng(71), rows = []; for (let i = 0; i < 200; i++) { let x, y, c; if (type === 'xor') { x = r() * 2 - 1; y = r() * 2 - 1; c = (x * y > 0) ? 1 : 0; x += 0.04 * L.randn(r); y += 0.04 * L.randn(r); } else if (type === 'circles') { c = i % 2; const t = 2 * Math.PI * r(), rad = (c ? 0.45 : 1) + 0.07 * L.randn(r); x = rad * Math.cos(t); y = rad * Math.sin(t); } else if (type === 'moons') { c = i % 2; const t = Math.PI * r(); x = c ? 1 - Math.cos(t) + 0.1 * L.randn(r) : Math.cos(t) + 0.1 * L.randn(r); y = c ? 0.4 - Math.sin(t) + 0.1 * L.randn(r) : Math.sin(t) + 0.1 * L.randn(r); } else { c = i % 2; x = (c ? 1 : -1) + 0.8 * L.randn(r); y = (c ? 0.7 : -0.7) + 0.8 * L.randn(r); } rows.push([r2(x, 3), r2(y, 3), c]); } return csv(['x1', 'x2', 'clase'], rows); };
     const form = Form('nn', [{ k: 'data', t: 'data', label: 'Datos: dos variables y clase 0/1', sample: () => mk('circles'), rows: 6 }, { k: 'y', t: 'col', from: 'data', any: true, label: 'Clase', def: 'clase' }, { k: 'arch', t: 'text', label: 'Capas ocultas (neuronas separadas por coma; vacío = perceptrón)', val: '8, 8' }, { k: 'act', t: 'sel', label: 'Activación oculta', opts: [['tanh', 'tanh'], ['relu', 'ReLU'], ['sigmoid', 'Sigmoide']] }, { k: 'lr', t: 'num', label: 'Tasa de aprendizaje η', val: 0.5, min: 0.001 }, { k: 'ep', t: 'num', label: 'Épocas', val: 400, min: 10, max: 5000 }, { k: 'bs', t: 'num', label: 'Tamaño de lote', val: 32, min: 1 }, { k: 'test', t: 'num', label: 'Fracción de prueba', val: 0.25, min: 0.1, max: 0.5 }, { k: 'seed', t: 'num', label: 'Semilla', val: 2 }]);
     const ex = h('div', { class: 'row' }, ...[['XOR', 'xor'], ['Círculos', 'circles'], ['Lunas', 'moons'], ['Lineal', 'lin']].map(([l, k]) => h('button', { type: 'button', class: 'btn sm ghost', onclick: () => { const t = $('#nn-data'); t.value = mk(k); t.dispatchEvent(new Event('input')); } }, 'Ejemplo: ' + l)));
     return {
       form, extra: [ex], run: async (out, v) => {
-        const tb = L.parseTable(v.data), D = binData(tb, v.y, tb.cols.filter(c => c.num && c.name !== v.y).map(c => c.name)), p = D.names.length; if (p !== 2) throw new Error('Este módulo requiere exactamente dos variables predictoras (para graficar la frontera).');
+        const tb = L.parseTable(v.data), D = binData(tb, v.y, v.x ? v.x : ['x1', 'x2']), p = D.names.length; if (p !== 2) throw new Error('Este módulo requiere exactamente dos variables predictoras (para graficar la frontera).');
         const rnd = L.rng(Math.round(v.seed)), sp = splitTT(D.n, v.test, rnd), st = L.standardize(D.X), Z = st.Z, Xtr = sub(Z, sp.tr), ytr = sub(D.y, sp.tr), Xte = sub(Z, sp.te), yte = sub(D.y, sp.te), hid = v.arch.split(',').map(s => parseInt(s)).filter(n => n > 0), sizes = [2, ...hid, 1], net = L.mlp(sizes, v.act, rnd), E = Math.round(v.ep), bs = Math.max(1, Math.round(v.bs));
         const cv = boundaryCanvas(520, 400), bnd = [Math.min(...Z.map(r => r[0])) - .3, Math.max(...Z.map(r => r[0])) + .3, Math.min(...Z.map(r => r[1])) - .3, Math.max(...Z.map(r => r[1])) + .3];
         out.innerHTML = ''; const status = h('p', { class: 'small', id: 'nn-status' }, 'Entrenando…'), lossBox = h('div', { id: 'nn-loss' }), cap = h('figcaption', null, 'Frontera de decisión de la red entrenada (puntos de entrenamiento).'); out.append(status, h('figure', { class: 'fig' }, cv, cap), lossBox);
@@ -1737,7 +1899,7 @@ reg({
   <ul><li><b>Basado en usuarios:</b> r̂(u,i) = r̄ᵤ + Σ_v sim(u,v)(r_vi − r̄_v) / Σ|sim(u,v)| sobre los k vecinos más similares que calificaron i.</li><li><b>Basado en ítems:</b> r̂(u,i) = Σ_j sim(i,j)·r_uj / Σ|sim(i,j)| sobre los ítems j calificados por u y más parecidos a i. Suele ser más estable cuando hay más usuarios que ítems.</li><li><b>Similitud:</b> coseno o correlación de Pearson calculada sobre las calificaciones en común.</li><li><b>Evaluación:</b> se oculta cada calificación conocida, se predice y se calcula RMSE y MAE. Limitaciones: arranque en frío (usuarios o ítems nuevos) y dispersión.</li></ul>`,
   code: `# Python\nfrom sklearn.metrics.pairwise import cosine_similarity\nS = cosine_similarity(R.fillna(0))\n# librerías: surprise (KNNWithMeans), implicit, LightFM\n# R\nlibrary(recommenderlab); Recommender(as(R, "realRatingMatrix"), method = "UBCF")`,
   build() {
-    const sample = () => { const items = ['Curso_SQL', 'Curso_Python', 'Curso_Spark', 'Curso_AWS', 'Curso_ML', 'Curso_Estad', 'Curso_NLP'], aff = [1, 0.2, 1, 1, -1, -1, -0.6], r = L.rng(5), rows = []; for (let u = 0; u < 14; u++) { const g = u % 2 ? 1 : -1; rows.push([`U${u + 1}`, ...items.map((_, j) => r() < 0.27 ? '' : Math.max(1, Math.min(5, Math.round(3 + 1.6 * g * aff[j] + 0.6 * L.randn(r)))))]); } return ['usuario', ...items].join(',') + '\n' + rows.map(x => x.join(',')).join('\n'); };
+    const sample = () => { const items = ['Curso_SQL', 'Curso_Python', 'Curso_Spark', 'Curso_AWS', 'Curso_ML', 'Curso_Estad', 'Curso_NLP']; const M = [[5, 4, '', 2, 5, 3, ''], [4, 5, 4, '', 5, '', 4], ['', 4, 5, 4, '', 2, 5], [2, '', 3, 5, 2, 4, ''], [5, 5, '', 3, 4, '', 4], [1, 2, 2, 5, '', 5, 1], [4, '', 4, 3, 5, 3, 5], ['', 3, 5, 4, 3, 2, 4], [3, 4, 3, '', '', 4, 3], [5, 4, 4, 2, 5, '', '']]; return ['usuario', ...items].join(',') + '\n' + M.map((r, i) => [`U${i + 1}`, ...r].join(',')).join('\n'); };
     const form = Form('recsys', [{ k: 'data', t: 'data', label: 'Matriz de calificaciones (primera columna: usuario; celdas vacías = sin calificar)', sample, rows: 8 }, { k: 'mode', t: 'sel', label: 'Método', opts: [['user', 'Basado en usuarios'], ['item', 'Basado en ítems']] }, { k: 'sim', t: 'sel', label: 'Similitud', opts: [['cos', 'Coseno'], ['pear', 'Pearson']] }, { k: 'k', t: 'num', label: 'Vecinos k', val: 4, min: 1 }, { k: 'u', t: 'text', label: 'Usuario a recomendar', val: 'U1' }, { k: 'top', t: 'num', label: 'N.º de recomendaciones', val: 3, min: 1 }]);
     return {
       form, run(out, v) {
@@ -1753,7 +1915,7 @@ reg({
         const ui = users.indexOf(v.u.trim()); if (ui < 0) throw new Error(`Usuario "${v.u}" no encontrado. Disponibles: ${users.join(', ')}`);
         const preds = items.map((it, i) => ({ it, i, p: R[ui][i] == null ? predict(R, ui, i) : null })).filter(a => a.p != null).sort((a, b) => b.p - a.p);
         let html = kpis([['Usuarios', nu], ['Ítems', ni], ['Dispersión', `${F(sp * 100, 1)} %`], ['RMSE (dejar uno fuera)', rmse], ['MAE', mae]]);
-        html += H4(`Recomendaciones para ${esc(v.u)}`) + tbl(['Posición', 'Ítem', 'Calificación prevista'], preds.slice(0, Math.round(v.top)).map((a, k) => [k + 1, esc(a.it), a.p])) + H4('Calificaciones conocidas del usuario') + tbl(['Ítem', 'Calificación'], items.map((it, i) => [esc(it), R[ui][i] == null ? '<i class="mut">sin calificar</i>' : R[ui][i]]).filter(r => !String(r[1]).includes('sin')));
+        html += H4(`Recomendaciones para ${esc(v.u)}`) + tbl(['Posición', 'Ítem', 'Calificación prevista'], preds.slice(0, Math.round(v.top)).map((a, k) => [k + 1, esc(a.it), a.p])) + H4('Calificaciones conocidas del usuario') + tbl(['Ítem', 'Calificación'], items.map((it, i) => [esc(it), R[ui][i] == null ? '<i class="mut">sin calificar</i>' : R[ui][i]]).filter(r => !r[1].includes('sin')));
         const S = items.map((_, a) => items.map((_, b) => simF(R.map(r => r[a]), R.map(r => r[b])))); html += H4('Similitud entre ítems') + fig(heatSVG(S, items, items));
         const base = Math.sqrt(L.mean(R.flat().filter(x => x != null).map(x => (x - L.mean(R.flat().filter(y => y != null))) ** 2)));
         html += interp(`<p>La matriz tiene ${F(sp * 100, 0)} % de celdas vacías. El método basado en ${v.mode === 'user' ? 'usuarios' : 'ítems'} con similitud ${v.sim === 'cos' ? 'coseno' : 'de Pearson'} logra RMSE = ${F(rmse, 3)}${rmse < base ? `, mejor que predecir siempre el promedio global (desv. estándar ${F(base, 3)})` : ', sin superar a la predicción por promedio global: pruebe otro k o similitud'}. Para <b>${esc(v.u)}</b> se recomienda primero <b>${preds.length ? esc(preds[0].it) : '—'}</b> (calificación prevista ${preds.length ? F(preds[0].p, 2) : '—'}).</p>`);
@@ -1863,6 +2025,309 @@ reg({
   }
 });
 
+/* ===== Identidad del propietario, sonidos, efectos, temas de colores sólidos y panel de ajustes ===== */
+const PROFILE_DEF = { nombre: 'Luis Rubén Medina', cargo: 'Propietario del diseño y prototipo', org: '', contacto: '', producto: 'Laboratorio de Data Science', version: 'Prototipo 1.0', lema: 'Metodologías de datos listas para calcular, interpretar e informar.' };
+const PROFILE = Object.assign({}, PROFILE_DEF, store.get('lab-perfil-v1') || {});
+const reduceMotion = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+const SET_DEF = { sound: true, hover: false, vol: 0.5, motion: !reduceMotion, theme: 'auto', accent: 'auto', palette: 'auto' };
+const SETTINGS = Object.assign({}, SET_DEF, store.get('lab-ajustes-v1') || {});
+const saveProfile = () => store.set('lab-perfil-v1', PROFILE), saveSettings = () => store.set('lab-ajustes-v1', SETTINGS);
+const tellProfile = () => document.dispatchEvent(new CustomEvent('profile'));
+
+/* ---------- sonidos (Web Audio, sintetizados: no hay archivos externos) ---------- */
+const SFX = (() => {
+  let ctx = null, master = null;
+  const ensure = () => {
+    try {
+      if (!ctx) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ctx = new C(); master = ctx.createGain(); master.connect(ctx.destination); }
+      if (ctx.state === 'suspended') ctx.resume();
+      master.gain.value = Math.pow(SETTINGS.vol, 1.6); return ctx;
+    } catch (e) { return null; }
+  };
+  const tone = (f, d, o = {}) => {
+    const c = ensure(); if (!c) return; const t0 = c.currentTime + (o.at || 0), osc = c.createOscillator(), g = c.createGain();
+    osc.type = o.type || 'sine'; osc.frequency.setValueAtTime(f, t0); if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t0 + d);
+    const v = o.v == null ? 0.2 : o.v; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    osc.connect(g); g.connect(master); osc.start(t0); osc.stop(t0 + d + 0.03);
+  };
+  const lib = {
+    click: () => { tone(740, 0.07, { type: 'triangle', v: 0.2, to: 480 }); tone(1480, 0.03, { type: 'square', v: 0.03 }); },
+    hover: () => tone(1250, 0.03, { type: 'sine', v: 0.05 }),
+    nav: () => { tone(420, 0.09, { type: 'triangle', v: 0.16 }); tone(630, 0.09, { type: 'triangle', v: 0.14, at: 0.06 }); },
+    ok: () => { tone(523, 0.11, { type: 'triangle', v: 0.2 }); tone(784, 0.18, { type: 'triangle', v: 0.2, at: 0.09 }); },
+    add: () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.14, { type: 'sine', v: 0.18, at: i * 0.07 })); },
+    err: () => { tone(220, 0.18, { type: 'sawtooth', v: 0.14, to: 140 }); tone(165, 0.22, { type: 'sawtooth', v: 0.12, at: 0.14, to: 110 }); },
+    toggle: () => tone(900, 0.06, { type: 'square', v: 0.07, to: 1200 }),
+    alarm: () => { [0, 0.22].forEach(a => tone(980, 0.14, { type: 'square', v: 0.1, at: a })); },
+    warn: () => tone(660, 0.16, { type: 'square', v: 0.07 }),
+    ack: () => { tone(700, 0.06, { type: 'triangle', v: 0.14 }); tone(1050, 0.1, { type: 'triangle', v: 0.14, at: 0.05 }); },
+    open: () => { tone(380, 0.12, { type: 'sine', v: 0.15, to: 760 }); },
+    close: () => { tone(760, 0.12, { type: 'sine', v: 0.13, to: 380 }); }
+  };
+  const play = n => { if (!SETTINGS.sound || !lib[n]) return; try { lib[n](); } catch (e) { } };
+  return { play, force: n => { try { lib[n](); } catch (e) { } } };
+})();
+
+/* ---------- temas sólidos y acentos ---------- */
+const THEMES = [
+  { id: 'auto', n: 'Automático', dark: null, sw: ['#edf0f6', '#121c32'] },
+  { id: 'light', n: 'Claro', dark: false, sw: ['#edf0f6', '#1b4fd6'] },
+  { id: 'dark', n: 'Oscuro', dark: true, sw: ['#0b111e', '#7ca4ff'] },
+  { id: 'scada', n: 'SCADA', dark: true, sw: ['#0d1117', '#22d3a0'] },
+  { id: 'marino', n: 'Azul marino', dark: true, sw: ['#0a1a33', '#4da3ff'] },
+  { id: 'grafito', n: 'Grafito', dark: true, sw: ['#1b1c1f', '#ffb020'] },
+  { id: 'hmi', n: 'HMI verde', dark: false, sw: ['#e3efe8', '#0f7a4a'] },
+  { id: 'arena', n: 'Arena', dark: false, sw: ['#f0ebe0', '#b45309'] }
+];
+const ACCENTS = [
+  { id: 'auto', n: 'Del tema', l: null, d: null },
+  { id: 'azul', n: 'Azul', l: '#1b4fd6', d: '#6f9bff' }, { id: 'cian', n: 'Cian', l: '#0a7f99', d: '#2fd3f2' },
+  { id: 'verde', n: 'Verde', l: '#0a8a52', d: '#2fe08c' }, { id: 'lima', n: 'Lima', l: '#5b8a0a', d: '#b4f03c' },
+  { id: 'ambar', n: 'Ámbar', l: '#b45309', d: '#ffb020' }, { id: 'naranja', n: 'Naranja', l: '#c2410c', d: '#ff8a4c' },
+  { id: 'rojo', n: 'Rojo', l: '#c62f2f', d: '#ff6b6b' }, { id: 'magenta', n: 'Magenta', l: '#a21caf', d: '#f080ff' },
+  { id: 'violeta', n: 'Violeta', l: '#6d3fd0', d: '#a98bff' }, { id: 'acero', n: 'Acero', l: '#475569', d: '#cbd5e1' }
+];
+const PALETTES = [
+  { id: 'auto', n: 'Estándar (daltónicos)', l: null, d: null },
+  { id: 'scada', n: 'SCADA saturada', l: ['#0a74c9', '#d98e00', '#0e9a4a', '#d4301f', '#6b7787', '#8a3fd0'], d: ['#2bb8ff', '#ffb020', '#2fd36f', '#ff5a4a', '#9aa7b8', '#d17bff'] },
+  { id: 'vivos', n: 'Colores vivos', l: ['#0077b6', '#d00070', '#3a7d22', '#c28a00', '#6a2fc0', '#d96b00'], d: ['#4cc9f0', '#f72585', '#b5e48c', '#ffd166', '#9b5de5', '#ff9f1c'] },
+  { id: 'contraste', n: 'Alto contraste', l: ['#000000', '#a87400', '#0077aa', '#c2185b', '#2e7d32', '#512da8'], d: ['#ffffff', '#ffd400', '#00e5ff', '#ff4081', '#76ff03', '#b388ff'] }
+];
+const isDarkNow = () => { const t = THEMES.find(x => x.id === SETTINGS.theme) || THEMES[0]; return t.dark === null ? !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) : t.dark; };
+const onColor = hex => { const n = parseInt(hex.slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255; return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 150 ? '#0b111e' : '#ffffff'; };
+function applyAppearance() {
+  const root = document.documentElement, dark = isDarkNow();
+  if (SETTINGS.theme === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', SETTINGS.theme);
+  const ac = ACCENTS.find(a => a.id === SETTINGS.accent) || ACCENTS[0];
+  if (ac.l) { const v = dark ? ac.d : ac.l; root.style.setProperty('--ac', v); root.style.setProperty('--acfg', onColor(v)); } else { root.style.removeProperty('--ac'); root.style.removeProperty('--acfg'); }
+  const pa = PALETTES.find(a => a.id === SETTINGS.palette) || PALETTES[0];
+  for (let i = 1; i <= 6; i++) { if (pa.l) root.style.setProperty('--c' + i, (dark ? pa.d : pa.l)[i - 1]); else root.style.removeProperty('--c' + i); }
+  root.classList.toggle('nomotion', !SETTINGS.motion);
+  const tb = $('#themeBtn'); if (tb) tb.textContent = 'Tema: ' + (THEMES.find(x => x.id === SETTINGS.theme) || THEMES[0]).n;
+  const sb = $('#sndBtn'); if (sb) { sb.textContent = SETTINGS.sound ? 'Sonido: sí' : 'Sonido: no'; sb.setAttribute('aria-pressed', SETTINGS.sound); sb.classList.toggle('on', SETTINGS.sound); }
+  document.dispatchEvent(new CustomEvent('appearance'));
+}
+
+/* ---------- identidad visible ---------- */
+function applyIdentity() {
+  const nm = $('#brandName'); if (nm) nm.textContent = PROFILE.producto || PROFILE_DEF.producto;
+  const by = $('#brandBy'); if (by) by.textContent = PROFILE.nombre ? 'por ' + PROFILE.nombre : '';
+  const ft = $('#siteFoot'); if (ft) {
+    const parts = [`© ${new Date().getFullYear()} ${PROFILE.nombre || ''}`.trim(), PROFILE.cargo, PROFILE.org, `${PROFILE.producto || ''} ${PROFILE.version || ''}`.trim(), PROFILE.contacto].filter(Boolean);
+    ft.textContent = parts.join(' · ');
+  }
+  const bar = $('.top'); if (bar) bar.setAttribute('aria-label', PROFILE.producto || '');
+  tellProfile();
+}
+
+/* ---------- panel de ajustes ---------- */
+function buildSettings() {
+  const sw = (arr, key, mk) => h('div', { class: 'swgrid', role: 'radiogroup' }, arr.map(o => h('button', { type: 'button', class: 'swb' + (SETTINGS[key] === o.id ? ' on' : ''), role: 'radio', 'aria-checked': SETTINGS[key] === o.id, 'data-id': o.id, title: o.n, onclick: e => { SETTINGS[key] = o.id; saveSettings(); applyAppearance(); refreshSw(); SFX.play('toggle'); } }, mk(o), h('span', null, o.n))));
+  const themeSw = o => h('i', { class: 'sw2', style: `background:${o.sw[0]};border-color:${o.sw[1]}` }, h('b', { style: `background:${o.sw[1]}` }));
+  const accSw = o => h('i', { class: 'sw1', style: o.l ? `background:${o.l}` : 'background:conic-gradient(#1b4fd6,#0a8a52,#b45309,#c62f2f,#6d3fd0,#1b4fd6)' });
+  const palSw = o => h('i', { class: 'swp' }, (o.l || ['#0072b2', '#d98e00', '#008a64', '#c8501a', '#8a94a6', '#b8609a']).map(c => h('b', { style: `background:${c}` })));
+  const fld = (k, label, ph) => { const id = `pf-${k}`, inp = h('input', { id, type: 'text', placeholder: ph || '', autocomplete: 'off' }); inp.value = PROFILE[k] || ''; inp.addEventListener('input', () => { const prev = PROFILE.nombre; PROFILE[k] = inp.value; saveProfile(); if (k === 'nombre' && typeof REPORT !== 'undefined' && (!REPORT.meta.autor || REPORT.meta.autor === prev)) { REPORT.meta.autor = inp.value; const r = $('#rm-autor'); if (r) r.value = inp.value; saveReport(); } if (k === 'org' && typeof REPORT !== 'undefined' && !REPORT.meta.org) { } applyIdentity(); }); return h('div', { class: 'fld' }, h('label', { for: id }, label), inp); };
+  const chk = (k, label, hint) => { const id = `st-${k}`, c = h('input', { id, type: 'checkbox' }); c.checked = !!SETTINGS[k]; c.addEventListener('change', () => { SETTINGS[k] = c.checked; saveSettings(); applyAppearance(); if (k === 'sound' && c.checked) SFX.force('ok'); else SFX.play('toggle'); }); return h('div', { class: 'fld chk' }, c, h('label', { for: id }, label, hint ? h('span', { class: 'hint' }, ' ' + hint) : null)); };
+  const vol = h('input', { id: 'st-vol', type: 'range', min: 0, max: 1, step: 0.05, value: SETTINGS.vol, 'aria-label': 'Volumen' });
+  vol.addEventListener('input', () => { SETTINGS.vol = +vol.value; saveSettings(); }); vol.addEventListener('change', () => SFX.force('click'));
+  const el = h('aside', { id: 'settings', class: 'drawer', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'setTitle', hidden: true },
+    h('header', null, h('h2', { id: 'setTitle' }, 'Ajustes'), h('button', { class: 'btn sm ghost', type: 'button', id: 'setClose' }, 'Cerrar')),
+    h('div', { class: 'body' },
+      h('section', null, h('h3', null, 'Identidad del prototipo'), h('p', { class: 'hint' }, 'Estos datos aparecen en el encabezado, el inicio, la portada y el pie de los informes. Se guardan solo en este navegador.'),
+        h('div', { class: 'form one' }, fld('nombre', 'Propietario / autor', 'Su nombre'), fld('cargo', 'Rol', 'Diseño y prototipo'), fld('org', 'Organización', 'Opcional'), fld('contacto', 'Contacto (opcional)', 'correo o sitio'), fld('producto', 'Nombre del producto', ''), fld('version', 'Versión', ''), fld('lema', 'Descripción corta', ''))),
+      h('section', null, h('h3', null, 'Fondo y tema'), h('div', { id: 'swTheme' })),
+      h('section', null, h('h3', null, 'Color de acento (sólido)'), h('div', { id: 'swAcc' })),
+      h('section', null, h('h3', null, 'Paleta de gráficos'), h('div', { id: 'swPal' })),
+      h('section', null, h('h3', null, 'Sonido y movimiento'), chk('sound', 'Sonidos en botones y alertas'), h('div', { class: 'fld' }, h('label', { for: 'st-vol' }, 'Volumen'), vol), chk('hover', 'Tic suave al pasar el cursor', '(opcional)'), chk('motion', 'Efectos de movimiento', '(animaciones, ondas, transiciones)'),
+        h('div', { class: 'row' }, h('button', { class: 'btn sm', type: 'button', onclick: () => SFX.force('ok') }, 'Probar éxito'), h('button', { class: 'btn sm', type: 'button', onclick: () => SFX.force('add') }, 'Probar agregado'), h('button', { class: 'btn sm', type: 'button', onclick: () => SFX.force('alarm') }, 'Probar alarma'))),
+      h('section', null, h('button', { class: 'btn sm ghost danger', type: 'button', onclick: () => { Object.assign(SETTINGS, SET_DEF); Object.assign(PROFILE, PROFILE_DEF); saveSettings(); saveProfile(); applyAppearance(); applyIdentity(); $$('#settings input[type=text]').forEach(i => i.value = PROFILE[i.id.slice(3)] || ''); $('#st-sound').checked = SETTINGS.sound; $('#st-hover').checked = SETTINGS.hover; $('#st-motion').checked = SETTINGS.motion; vol.value = SETTINGS.vol; refreshSw(); } }, 'Restablecer ajustes e identidad'))));
+  const back = h('div', { id: 'setBack', class: 'back', hidden: true });
+  document.body.append(back, el);
+  const mount = (id, node) => { const old = $('#' + id); old.replaceWith(Object.assign(node, { id })); };
+  function refreshSw() { mount('swTheme', sw(THEMES, 'theme', themeSw)); mount('swAcc', sw(ACCENTS, 'accent', accSw)); mount('swPal', sw(PALETTES, 'palette', palSw)); }
+  refreshSw();
+  let opener = null;
+  const open = () => { opener = document.activeElement; el.hidden = false; back.hidden = false; requestAnimationFrame(() => { el.classList.add('open'); back.classList.add('open'); }); SFX.play('open'); $('#setClose').focus(); };
+  const close = () => { el.classList.remove('open'); back.classList.remove('open'); SFX.play('close'); setTimeout(() => { el.hidden = true; back.hidden = true; }, SETTINGS.motion ? 260 : 0); if (opener) opener.focus(); };
+  $('#setClose').onclick = close; back.onclick = close; $('#setBtn').onclick = open;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !el.hidden) close(); if (e.key === 'Tab' && !el.hidden) { const f = $$('button,input,select,textarea,[href]', el).filter(x => !x.disabled && x.offsetParent !== null); if (!f.length) return; const a = f[0], z = f[f.length - 1]; if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); } else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); } } });
+}
+
+/* ---------- efectos de interacción: ondas, sonido, contadores ---------- */
+const PRESS = '.btn,.ni,.swb,.seg button,.chipf,.tile .tact,.brand';
+function initFx() {
+  document.addEventListener('pointerdown', e => {
+    const t = e.target.closest ? e.target.closest(PRESS) : null; if (!t || t.disabled) return;
+    if (SETTINGS.motion && !t.classList.contains('brand')) { const r = t.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2, s = h('span', { class: 'rip', style: `width:${d}px;height:${d}px;left:${e.clientX - r.left - d / 2}px;top:${e.clientY - r.top - d / 2}px` }); t.append(s); setTimeout(() => s.remove(), 650); }
+    SFX.play(t.classList.contains('ni') ? 'nav' : 'click');
+  }, true);
+  let lastHover = null;
+  document.addEventListener('pointerover', e => { if (!SETTINGS.hover) return; const t = e.target.closest ? e.target.closest(PRESS) : null; if (t && t !== lastHover && !t.disabled) { lastHover = t; SFX.play('hover'); } else if (!t) lastHover = null; });
+  document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest(PRESS) && e.target.tagName !== 'A' && e.target.tagName !== 'INPUT') { /* el click del teclado ya reproduce vía 'click' sintético */ } });
+  document.addEventListener('click', e => { if (e.detail === 0 && e.target.closest && e.target.closest(PRESS)) SFX.play('click'); }, true);
+  document.addEventListener('modrun', e => { SFX.play(e.detail.ok ? 'ok' : 'err'); const b = $(`#${e.detail.id}-run`); if (b && SETTINGS.motion) { b.classList.remove('flash'); void b.offsetWidth; b.classList.add(e.detail.ok ? 'flash' : 'flasherr'); setTimeout(() => b.classList.remove('flash', 'flasherr'), 900); } });
+  document.addEventListener('modadd', () => { SFX.play('add'); const b = $('#repCount'); if (b) { b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); } });
+}
+function countUp(el, to, o = {}) {
+  const dec = o.dec || 0, fmt = v => v.toLocaleString('es-CL', { minimumFractionDigits: dec, maximumFractionDigits: dec }) + (o.suffix || '');
+  if (!SETTINGS.motion || !isFinite(to)) { el.textContent = fmt(to); return; }
+  const t0 = performance.now(), D = o.ms || 900; const step = t => { const k = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(to * e); if (k < 1 && el.isConnected) requestAnimationFrame(step); else el.textContent = fmt(to); }; requestAnimationFrame(step);
+}
+function initAppearance() {
+  const tb = $('#themeBtn'), sb = $('#sndBtn');
+  tb.onclick = () => { const i = THEMES.findIndex(x => x.id === SETTINGS.theme); SETTINGS.theme = THEMES[(i + 1) % THEMES.length].id; saveSettings(); applyAppearance(); const s = $$('#swTheme .swb'); s.forEach(b => { const on = b.dataset.id === SETTINGS.theme; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); }); };
+  sb.onclick = () => { SETTINGS.sound = !SETTINGS.sound; saveSettings(); applyAppearance(); const c = $('#st-sound'); if (c) c.checked = SETTINGS.sound; if (SETTINGS.sound) SFX.force('ok'); };
+  if (window.matchMedia) { try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (SETTINGS.theme === 'auto') applyAppearance(); }); } catch (e) { } }
+  applyAppearance();
+}
+
+/* ===== Centro de control tipo SCADA: estado de módulos con filtros + señales de proceso simuladas ===== */
+const MOD_STATE = {}; // id -> {ran, ms, err}
+document.addEventListener('modrun', e => { MOD_STATE[e.detail.id] = { ran: Date.now(), ms: e.detail.ms, err: !e.detail.ok }; if (scadaVisible()) renderTiles(); });
+document.addEventListener('modadd', () => { if (scadaVisible()) renderTiles(); });
+const scadaVisible = () => { const e = $('#scada'); return !!e && !e.hidden; };
+const FIL = { q: '', nivel: 'todos', estado: 'todos', grupos: new Set(GROUPS), vista: 'mosaico', compacto: false, orden: 'ref', logFilter: 'todas' };
+const GCOL = {}; GROUPS.forEach((g, i) => GCOL[g] = (i % 6) + 1);
+const modLevel = m => String(m.ref).startsWith('Básico') ? 'Básico' : 'Avanzado';
+const modStatus = m => { const st = MOD_STATE[m.id], inRep = REPORT.sections.some(s => s.mod === m.id); return st && st.err ? 'error' : inRep ? 'informe' : st ? 'ejecutado' : 'pendiente'; };
+const STATUS_TXT = { pendiente: 'Sin ejecutar', ejecutado: 'Ejecutado', informe: 'En informe', error: 'Con error' };
+
+/* ---- indicadores (medidores semicirculares) ---- */
+function gauge(id, label, color) {
+  return `<div class="gauge" data-g="${id}"><svg viewBox="0 0 100 62" aria-hidden="true"><path class="gbg" d="M10 54 A40 40 0 0 1 90 54"/><path class="gfg" d="M10 54 A40 40 0 0 1 90 54" style="stroke:var(--${color})" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/></svg><b class="gv">0</b><span class="gl">${label}</span><small class="gs"></small></div>`;
+}
+function setGauge(id, frac, big, sub) {
+  const g = $(`.gauge[data-g="${id}"]`); if (!g) return; const f = Math.max(0, Math.min(1, frac)); const gf = $('.gfg', g); gf.style.strokeDashoffset = String(100 - f * 100); gf.style.opacity = f > 0 ? 1 : 0; const gv = $('.gv', g); if (typeof big === 'number') countUp(gv, big, { ms: 700 }); else gv.textContent = big; $('.gs', g).textContent = sub || '';
+}
+
+/* ---- mosaico de módulos con filtros ---- */
+function filteredMods() {
+  const q = FIL.q.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  let a = MODS.filter(m => FIL.grupos.has(m.group) && (FIL.nivel === 'todos' || modLevel(m) === FIL.nivel) && (FIL.estado === 'todos' || modStatus(m) === FIL.estado) && (!q || (m.title + ' ' + m.group + ' ' + m.ref + ' ' + (m.lead || '')).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(q)));
+  const key = { ref: m => GROUPS.indexOf(m.group) * 100 + MODS.indexOf(m), nombre: m => m.title.toLowerCase(), familia: m => m.group + m.title, estado: m => ['error', 'pendiente', 'ejecutado', 'informe'].indexOf(modStatus(m)) + m.title };
+  return a.sort((x, y) => { const kx = key[FIL.orden](x), ky = key[FIL.orden](y); return kx < ky ? -1 : kx > ky ? 1 : 0; });
+}
+function renderTiles() {
+  const box = $('#tiles'); if (!box) return; const list = filteredMods(); box.className = 'tiles ' + FIL.vista + (FIL.compacto ? ' compact' : ''); box.innerHTML = '';
+  list.forEach((m, i) => {
+    const s = modStatus(m), st = MOD_STATE[m.id];
+    const run = h('button', { class: 'btn sm tact', type: 'button', 'aria-label': `Ejecutar ${m.title}`, onclick: async e => { const b = e.currentTarget; b.disabled = true; b.textContent = 'Ejecutando…'; const pg = ensureMounted(m.id); const rb = $(`#${m.id}-run`); if (pg.ready) await pg.ready; if (!MOD_STATE[m.id]) { rb.click(); await new Promise(r => { const t0 = Date.now(), iv = setInterval(() => { if (!rb.disabled || Date.now() - t0 > 60000) { clearInterval(iv); r(); } }, 80); }); } renderTiles(); } }, st ? 'Recalcular' : 'Ejecutar');
+    const t = h('article', { class: `tile s-${s}`, style: `--g:var(--c${GCOL[m.group]});--i:${Math.min(i, 24)}` },
+      h('span', { class: 'led', title: STATUS_TXT[s], role: 'img', 'aria-label': STATUS_TXT[s] }),
+      h('div', { class: 'tb' }, h('p', { class: 'tg' }, m.group, ' · ', h('span', null, m.ref)), h('h4', null, m.title.split(':')[0]), h('p', { class: 'ts' }, STATUS_TXT[s], st ? ` · ${st.ms} ms` : '', ' · ', modLevel(m))),
+      h('div', { class: 'tbtn' }, h('a', { class: 'btn sm tact', href: `#${m.id}` }, 'Abrir'), run));
+    box.append(t);
+  });
+  if (!list.length) box.append(h('div', { class: 'empty' }, 'Ningún módulo coincide con los filtros activos.'));
+  const tot = MODS.length, ran = MODS.filter(m => MOD_STATE[m.id] && !MOD_STATE[m.id].err).length, inRep = new Set(REPORT.sections.map(s => s.mod)).size, errs = MODS.filter(m => modStatus(m) === 'error').length;
+  const msArr = MODS.map(m => MOD_STATE[m.id]).filter(x => x && !x.err).map(x => x.ms), avg = msArr.length ? msArr.reduce((a, b) => a + b, 0) / msArr.length : 0;
+  setGauge('ran', ran / tot, ran, `de ${tot} módulos`); setGauge('rep', inRep / tot, inRep, `${REPORT.sections.length} secciones en el informe`);
+  setGauge('fam', GROUPS.filter(g => MODS.some(m => m.group === g && MOD_STATE[m.id] && !MOD_STATE[m.id].err)).length / GROUPS.length, GROUPS.filter(g => MODS.some(m => m.group === g && MOD_STATE[m.id] && !MOD_STATE[m.id].err)).length, `de ${GROUPS.length} familias`);
+  setGauge('ms', Math.min(1, avg / 2000), msArr.length ? Math.round(avg) + ' ms' : '—', msArr.length ? 'tiempo medio de cálculo' : 'sin cálculos aún');
+  const cnt = $('#fcount'); if (cnt) cnt.textContent = `${list.length} de ${tot} módulos`;
+  const er = $('#ferr'); if (er) { er.textContent = errs ? `${errs} con error` : 'Sin errores'; er.className = 'pill ' + (errs ? 'bad' : 'ok'); }
+}
+
+/* ---- señales de proceso simuladas ---- */
+const TAGS = [
+  { id: 'T-101', n: 'Temperatura reactor', u: '°C', base: 72, amp: 3, per: 90, noise: 0.5, dec: 1, lim: { LL: 55, L: 62, H: 80, HH: 88 }, col: 4 },
+  { id: 'P-201', n: 'Presión de línea', u: 'bar', base: 6.2, amp: 0.35, per: 55, noise: 0.05, dec: 2, lim: { LL: 4.8, L: 5.4, H: 7.2, HH: 7.8 }, col: 1 },
+  { id: 'F-301', n: 'Caudal de alimentación', u: 'm³/h', base: 118, amp: 7, per: 70, noise: 1.4, dec: 1, lim: { LL: 90, L: 100, H: 135, HH: 145 }, col: 3 },
+  { id: 'V-401', n: 'Vibración de bomba', u: 'mm/s', base: 2.4, amp: 0.4, per: 40, noise: 0.18, dec: 2, lim: { LL: 0, L: 0, H: 4.5, HH: 7.1 }, col: 2 }
+];
+const SIM = { buf: [], on: new Set(TAGS.map(t => t.id)), win: 120, dt: 1, run: true, seed: 7, t: 0, ar: {}, exc: {}, log: [], state: {}, tick: 0, iv: null, last: Date.now() };
+function rng() { SIM.seed |= 0; SIM.seed = SIM.seed + 0x6D2B79F5 | 0; let t = Math.imul(SIM.seed ^ SIM.seed >>> 15, 1 | SIM.seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+const gauss = () => { let u = 0, v = 0; while (!u) u = rng(); while (!v) v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+function simStep() {
+  SIM.t += SIM.dt; const row = { t: SIM.t };
+  TAGS.forEach(g => {
+    SIM.ar[g.id] = 0.82 * (SIM.ar[g.id] || 0) + g.noise * gauss();
+    let e = SIM.exc[g.id]; if (!e && rng() < 0.0035 * SIM.dt) SIM.exc[g.id] = e = { k: 0, n: 14 + Math.floor(rng() * 14), sgn: rng() < 0.75 ? 1 : -1, a: (0.3 + rng() * 0.6) };
+    let ex = 0; if (e) { const p = e.k / e.n; ex = e.sgn * e.a * (g.lim.HH - g.base) * Math.sin(Math.PI * p) * 1.15; e.k++; if (e.k >= e.n) SIM.exc[g.id] = null; }
+    row[g.id] = g.base + g.amp * Math.sin(2 * Math.PI * SIM.t / g.per) + SIM.ar[g.id] + ex;
+  });
+  SIM.buf.push(row); if (SIM.buf.length > 1200) SIM.buf.shift(); return row;
+}
+const levelOf = (g, v) => { const l = g.lim; return v >= l.HH ? 'HH' : v >= l.H ? 'H' : (l.LL > 0 && v <= l.LL) ? 'LL' : (l.L > 0 && v <= l.L) ? 'L' : 'N'; };
+const LV_TXT = { N: 'Normal', H: 'Alta', HH: 'Alarma alta', L: 'Baja', LL: 'Alarma baja' }, LV_CLS = { N: 'ok', H: 'warn', L: 'warn', HH: 'alm', LL: 'alm' };
+const fmtT = s => { const d = new Date(SIM.t0 + s * 1000); return d.toLocaleTimeString('es-CL', { hour12: false }); };
+function simTick() {
+  if (!SIM.run) return; const row = simStep();
+  TAGS.forEach(g => { const lv = levelOf(g, row[g.id]), prev = SIM.state[g.id] || 'N'; if (lv !== prev) { SIM.state[g.id] = lv; if (lv !== 'N' || prev !== 'N') { SIM.log.unshift({ t: row.t, tag: g.id, n: g.n, v: row[g.id], u: g.u, dec: g.dec, lv, prev, ack: lv === 'N' }); SIM.log = SIM.log.slice(0, 60); if (lv === 'HH' || lv === 'LL') SFX.play('alarm'); else if (lv !== 'N') SFX.play('warn'); } } });
+  if (scadaVisible()) { drawTrend(); drawTagTable(row); drawLog(); }
+}
+function drawTrend() {
+  const el = $('#trend'); if (!el) return; const n = Math.min(SIM.buf.length, Math.round(SIM.win / SIM.dt)), data = SIM.buf.slice(-n), on = TAGS.filter(g => SIM.on.has(g.id));
+  const W = 900, LH = 78, M = { l: 54, r: 14, t: 6, b: 18 }, H = M.t + M.b + on.length * LH; if (!on.length) { el.innerHTML = '<div class="empty">Active al menos una señal en los filtros.</div>'; return; }
+  const x = i => M.l + (W - M.l - M.r) * (n <= 1 ? 0 : i / (n - 1)); let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Tendencias de proceso en tiempo real (simuladas)">`;
+  on.forEach((g, k) => {
+    const y0 = M.t + k * LH, lo = Math.min(...data.map(r => r[g.id]), g.lim.L || g.base - 1, g.base - 2 * g.amp) * 0.995, hi = Math.max(...data.map(r => r[g.id]), g.lim.HH) * 1.01, y = v => y0 + LH - 14 - (LH - 22) * ((v - lo) / (hi - lo || 1)), lv = SIM.state[g.id] || 'N';
+    s += `<g class="lane lv-${LV_CLS[lv]}"><rect class="lbg" x="${M.l}" y="${y0}" width="${W - M.l - M.r}" height="${LH - 10}"/>`;
+    s += `<rect class="zone" x="${M.l}" y="${y(hi)}" width="${W - M.l - M.r}" height="${Math.max(0, y(g.lim.H) - y(hi))}"/>`;
+    [['HH', 'alm'], ['H', 'warn'], ['L', 'warn'], ['LL', 'alm']].forEach(([k2, c]) => { const v = g.lim[k2]; if (v > 0 && v > lo && v < hi) s += `<line class="lim ${c}" x1="${M.l}" x2="${W - M.r}" y1="${y(v)}" y2="${y(v)}"/><text class="lt ${c}" x="${W - M.r - 2}" y="${y(v) - 2}" text-anchor="end">${k2}</text>`; });
+    const pts = data.map((r, i) => `${x(i).toFixed(1)},${y(r[g.id]).toFixed(1)}`).join(' ');
+    s += `<polyline class="trace" style="stroke:var(--c${g.col})" points="${pts}"/>`;
+    const last = data[data.length - 1]; if (last) s += `<circle class="dot ${LV_CLS[lv]}" cx="${x(data.length - 1)}" cy="${y(last[g.id])}" r="4"/>`;
+    s += `<text class="tn" x="6" y="${y0 + 14}">${g.id}</text><text class="tu" x="6" y="${y0 + 28}">${g.u}</text><text class="tv" x="6" y="${y0 + 46}">${last ? last[g.id].toFixed(g.dec).replace('.', ',') : ''}</text></g>`;
+  });
+  const yb = H - 4; [0, 0.25, 0.5, 0.75, 1].forEach(f => { const i = Math.round(f * (n - 1)); if (data[i]) s += `<text class="ax" x="${x(i)}" y="${yb}" text-anchor="${f === 0 ? 'start' : f === 1 ? 'end' : 'middle'}">${fmtT(data[i].t)}</text>`; });
+  el.innerHTML = s + '</svg>';
+}
+function drawTagTable(row) {
+  const box = $('#tagtbl'); if (!box) return; if (!box.dataset.built) {
+    box.dataset.built = 1; box.innerHTML = `<table class="t tags"><thead><tr><th class="l">Señal</th><th>Valor</th><th class="l">Estado</th><th>LL</th><th>L</th><th>H</th><th>HH</th></tr></thead><tbody>${TAGS.map(g => `<tr id="tg-${g.id}"><td class="l"><span class="led" id="tl-${g.id}"></span><b>${g.id}</b> ${esc(g.n)} <small>${g.u}</small></td><td class="v" id="tv-${g.id}">—</td><td class="l" id="ts-${g.id}">—</td>${['LL', 'L', 'H', 'HH'].map(k => `<td><input type="number" step="any" aria-label="Límite ${k} de ${g.id}" data-t="${g.id}" data-k="${k}" value="${g.lim[k]}"></td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    $$('input[data-t]', box).forEach(i => i.addEventListener('change', () => { const g = TAGS.find(t => t.id === i.dataset.t); const v = parseFloat(i.value); if (isFinite(v)) g.lim[i.dataset.k] = v; i.value = g.lim[i.dataset.k]; }));
+  }
+  TAGS.forEach(g => { const v = row[g.id], lv = SIM.state[g.id] || levelOf(g, v); const tv = $('#tv-' + g.id), ts = $('#ts-' + g.id), tl = $('#tl-' + g.id); if (tv) tv.textContent = v.toFixed(g.dec).replace('.', ','); if (ts) { ts.textContent = LV_TXT[lv]; ts.className = 'l st ' + LV_CLS[lv]; } if (tl) tl.className = 'led ' + LV_CLS[lv]; const tr = $('#tg-' + g.id); if (tr) tr.className = 'tr-' + LV_CLS[lv] + (SIM.on.has(g.id) ? '' : ' off'); });
+  const nAlm = TAGS.filter(g => ['HH', 'LL'].includes(SIM.state[g.id])).length, nWarn = TAGS.filter(g => ['H', 'L'].includes(SIM.state[g.id])).length, b = $('#almBanner');
+  if (b) { b.className = 'banner ' + (nAlm ? 'alm' : nWarn ? 'warn' : 'ok'); b.textContent = nAlm ? `${nAlm} alarma${nAlm > 1 ? 's' : ''} activa${nAlm > 1 ? 's' : ''}` : nWarn ? `${nWarn} señal${nWarn > 1 ? 'es' : ''} fuera de rango (alerta)` : 'Proceso en rango normal'; }
+}
+function drawLog() {
+  const box = $('#alog'); if (!box) return; const rows = SIM.log.filter(r => FIL.logFilter === 'todas' || (!r.ack && r.lv !== 'N')).slice(0, 10);
+  box.innerHTML = rows.length ? `<table class="t"><thead><tr><th class="l">Hora</th><th class="l">Señal</th><th>Valor</th><th class="l">Evento</th><th class="l">Reconocida</th></tr></thead><tbody>${rows.map((r, i) => `<tr class="lg-${LV_CLS[r.lv]}"><td class="l">${fmtT(r.t)}</td><td class="l"><b>${r.tag}</b> ${esc(r.n)}</td><td>${r.v.toFixed(r.dec).replace('.', ',')} ${r.u}</td><td class="l st ${LV_CLS[r.lv]}">${r.lv === 'N' ? 'Vuelve a normal' : LV_TXT[r.lv]}</td><td class="l">${r.ack ? 'Sí' : `<button class="btn sm" type="button" data-ack="${SIM.log.indexOf(r)}">Reconocer</button>`}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">Sin eventos de alarma todavía. Las excursiones simuladas aparecen aquí.</div>';
+  $$('button[data-ack]', box).forEach(b => b.onclick = () => { const r = SIM.log[+b.dataset.ack]; if (r) { r.ack = true; SFX.play('ack'); drawLog(); } });
+}
+function simCSV() {
+  const n = Math.min(SIM.buf.length, Math.round(SIM.win / SIM.dt)), d = SIM.buf.slice(-n), cols = TAGS.filter(g => SIM.on.has(g.id));
+  return ['tiempo_s;hora;' + cols.map(g => g.id).join(';'), ...d.map(r => [r.t.toFixed(0), fmtT(r.t), ...cols.map(g => r[g.id].toFixed(4).replace('.', ','))].join(';'))].join('\n');
+}
+
+/* ---- página ---- */
+const seg = (id, label, opts, key, onset) => h('div', { class: 'ctl' }, h('span', { class: 'cl', id: `${id}-l` }, label), h('div', { class: 'seg', role: 'radiogroup', 'aria-labelledby': `${id}-l` }, opts.map(([v, t]) => h('button', { type: 'button', role: 'radio', 'aria-checked': FIL[key] === v, class: FIL[key] === v ? 'on' : '', 'data-v': v, onclick: e => { FIL[key] = v; $$('button', e.currentTarget.parentNode).forEach(b => { const on = b.dataset.v === v; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); }); onset ? onset() : renderTiles(); } }, t))));
+function buildScada() {
+  const el = $('#scada'); SIM.t0 = Date.now() - 600 * 1000; el.innerHTML = '';
+  for (let i = 0; i < 600; i++) simStep(); SIM.log = []; SIM.state = {}; TAGS.forEach(g => SIM.state[g.id] = levelOf(g, SIM.buf[SIM.buf.length - 1][g.id]));
+  const head = h('header', { class: 'mh scada-h' }, h('div', null, h('p', { class: 'eyebrow' }, 'Centro de control'), h('h2', null, 'Panel SCADA de módulos y señales')), h('p', { class: 'lead' }, 'Vista de supervisión del laboratorio: estado de cada módulo con filtros, medidores y, al final, una consola de tendencias con alarmas sobre señales simuladas.'),
+    h('div', { class: 'statusbar' }, h('span', { class: 'pill ok' }, h('i', { class: 'led ok' }), 'Sistema en línea'), h('span', { class: 'pill', id: 'clock' }, '--:--:--'), h('span', { class: 'pill', id: 'ferr' }, ''), h('span', { class: 'pill' }, `${MODS.length} módulos`)));
+  const gauges = h('section', { class: 'gauges', html: gauge('ran', 'Módulos ejecutados', 'c3') + gauge('rep', 'Módulos en el informe', 'c1') + gauge('fam', 'Familias activas', 'c2') + gauge('ms', 'Tiempo medio', 'c4') });
+  const search = h('div', { class: 'ctl grow' }, h('label', { class: 'cl', for: 'fq' }, 'Buscar'), h('input', { id: 'fq', type: 'text', placeholder: 'Nombre, familia o referencia…', oninput: e => { FIL.q = e.target.value; renderTiles(); } }));
+  const chips = h('div', { class: 'ctl grow' }, h('span', { class: 'cl' }, 'Familias'), h('div', { class: 'chipsf', role: 'group', 'aria-label': 'Filtrar por familia' }, GROUPS.map(g => h('button', { type: 'button', class: 'chipf on', 'aria-pressed': true, style: `--g:var(--c${GCOL[g]})`, onclick: e => { const b = e.currentTarget, on = !FIL.grupos.has(g); on ? FIL.grupos.add(g) : FIL.grupos.delete(g); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); renderTiles(); } }, h('i'), g)), h('button', { type: 'button', class: 'chipf all', onclick: () => { const all = FIL.grupos.size === GROUPS.length; FIL.grupos = new Set(all ? [] : GROUPS); $$('.chipf:not(.all)', chips).forEach(b => { b.classList.toggle('on', !all); b.setAttribute('aria-pressed', !all); }); renderTiles(); } }, 'Todas / ninguna')));
+  const reset = h('button', { class: 'btn sm ghost', type: 'button', onclick: () => { Object.assign(FIL, { q: '', nivel: 'todos', estado: 'todos', grupos: new Set(GROUPS), vista: 'mosaico', compacto: false, orden: 'ref', logFilter: 'todas' }); buildScada(); show('scada'); } }, 'Restablecer filtros');
+  const bulk = h('button', { class: 'btn pri sm', type: 'button', id: 'runAll', onclick: async e => { const b = e.currentTarget, lst = filteredMods().filter(m => !MOD_STATE[m.id]); if (!lst.length) { b.textContent = 'Nada pendiente en la vista'; setTimeout(() => b.textContent = 'Ejecutar pendientes de la vista', 1800); return; } b.disabled = true; const bar = $('#bulkbar'); bar.hidden = false; let k = 0; for (const m of lst) { b.textContent = `Ejecutando ${++k}/${lst.length}…`; $('#bulkfill').style.width = (100 * (k - 1) / lst.length) + '%'; const pg = ensureMounted(m.id); await pg.ready; if (!MOD_STATE[m.id]) { const rb = $(`#${m.id}-run`); rb.click(); await new Promise(r => { const t0 = Date.now(), iv = setInterval(() => { if (!rb.disabled || Date.now() - t0 > 60000) { clearInterval(iv); r(); } }, 80); }); } renderTiles(); } $('#bulkfill').style.width = '100%'; b.disabled = false; b.textContent = 'Ejecutar pendientes de la vista'; setTimeout(() => bar.hidden = true, 1200); } }, 'Ejecutar pendientes de la vista');
+  const filters = h('section', { class: 'panel filters', 'aria-label': 'Filtros' }, h('div', { class: 'frow' }, search,
+    seg('fn', 'Nivel', [['todos', 'Todos'], ['Básico', 'Básico'], ['Avanzado', 'Avanzado']], 'nivel'),
+    seg('fe', 'Estado', [['todos', 'Todos'], ['pendiente', 'Sin ejecutar'], ['ejecutado', 'Ejecutado'], ['informe', 'En informe'], ['error', 'Error']], 'estado')),
+    h('div', { class: 'frow' }, chips),
+    h('div', { class: 'frow' }, seg('fv', 'Vista', [['mosaico', 'Mosaico'], ['lista', 'Lista']], 'vista'), seg('fo', 'Orden', [['ref', 'Referencia'], ['nombre', 'Nombre'], ['familia', 'Familia'], ['estado', 'Estado']], 'orden'),
+      h('div', { class: 'ctl' }, h('span', { class: 'cl' }, 'Densidad'), h('button', { type: 'button', class: 'btn sm', 'aria-pressed': false, onclick: e => { FIL.compacto = !FIL.compacto; e.currentTarget.setAttribute('aria-pressed', FIL.compacto); e.currentTarget.classList.toggle('on', FIL.compacto); renderTiles(); } }, 'Compacta')),
+      h('div', { class: 'ctl' }, h('span', { class: 'cl' }, 'Acciones'), h('div', { class: 'row', style: 'margin:0' }, bulk, reset)), h('span', { class: 'pill', id: 'fcount', style: 'align-self:flex-end' }, '')),
+    h('div', { class: 'bulk', id: 'bulkbar', hidden: true }, h('i', { id: 'bulkfill' })));
+  const tiles = h('div', { id: 'tiles', class: 'tiles' });
+  /* consola de señales */
+  const winSeg = (lab, key, opts, fn) => h('div', { class: 'ctl' }, h('span', { class: 'cl' }, lab), h('div', { class: 'seg', role: 'radiogroup', 'aria-label': lab }, opts.map(([v, t]) => h('button', { type: 'button', role: 'radio', 'aria-checked': SIM[key] === v, class: SIM[key] === v ? 'on' : '', onclick: e => { SIM[key] = v; $$('button', e.currentTarget.parentNode).forEach(b => { b.classList.toggle('on', b === e.currentTarget); b.setAttribute('aria-checked', b === e.currentTarget); }); fn && fn(); drawTrend(); } }, t))));
+  const tagChips = h('div', { class: 'ctl grow' }, h('span', { class: 'cl' }, 'Señales visibles'), h('div', { class: 'chipsf', role: 'group', 'aria-label': 'Señales visibles' }, TAGS.map(g => h('button', { type: 'button', class: 'chipf on', 'aria-pressed': true, style: `--g:var(--c${g.col})`, onclick: e => { const b = e.currentTarget, on = !SIM.on.has(g.id); on ? SIM.on.add(g.id) : SIM.on.delete(g.id); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); drawTrend(); drawTagTable(SIM.buf[SIM.buf.length - 1]); } }, h('i'), `${g.id} ${g.n}`))));
+  const pauseBtn = h('button', { class: 'btn sm', type: 'button', id: 'simPause', 'aria-pressed': false, onclick: e => { SIM.run = !SIM.run; e.currentTarget.textContent = SIM.run ? 'Pausar' : 'Reanudar'; e.currentTarget.classList.toggle('on', !SIM.run); e.currentTarget.setAttribute('aria-pressed', !SIM.run); $('#simState').textContent = SIM.run ? 'EN VIVO' : 'PAUSADO'; $('#simState').className = 'pill ' + (SIM.run ? 'live' : ''); } }, 'Pausar');
+  const csvBtn = h('button', { class: 'btn sm', type: 'button', onclick: async () => { const msg = $('#simMsg'), csv = simCSV(); try { const d = await claude.use('downloads'); if (d) { await d.save({ filename: 'senales-simuladas.csv', data: csv }); msg.textContent = 'Serie guardada como CSV (separador «;»).'; return; } } catch (e) { } try { await navigator.clipboard.writeText(csv); msg.textContent = 'Serie copiada al portapapeles (CSV con «;»). Péguela en los módulos de series de tiempo o regresión.'; } catch (e) { msg.textContent = 'No se pudo copiar automáticamente.'; } } }, 'Exportar serie (CSV)');
+  const sig = h('section', { class: 'panel console' }, h('div', { class: 'ch' }, h('h3', null, 'Consola de tendencias (señales simuladas)'), h('span', { class: 'pill live', id: 'simState' }, 'EN VIVO'), h('div', { id: 'almBanner', class: 'banner ok', role: 'status' }, 'Proceso en rango normal')),
+    h('p', { class: 'small' }, 'Datos generados por un simulador (ciclo suave + ruido + excursiones aleatorias). No hay conexión a ningún PLC ni RTU. Los límites LL, L, H y HH son valores de ejemplo editables.'),
+    h('div', { class: 'frow' }, tagChips, winSeg('Ventana', 'win', [[30, '30 s'], [120, '2 min'], [300, '5 min'], [600, '10 min']]), h('div', { class: 'ctl' }, h('span', { class: 'cl' }, 'Control'), h('div', { class: 'row', style: 'margin:0' }, pauseBtn, csvBtn))),
+    h('div', { id: 'trend', class: 'trendbox' }), h('p', { class: 'small', id: 'simMsg', role: 'status' }), h('div', { id: 'tagtbl', class: 'tw' }),
+    h('div', { class: 'ch' }, h('h3', null, 'Registro de alarmas'), seg('fl', 'Mostrar', [['todas', 'Todas'], ['activas', 'Sin reconocer']], 'logFilter', drawLog)), h('div', { id: 'alog' }));
+  el.append(head, gauges, filters, tiles, sig);
+  renderTiles(); drawTrend(); drawTagTable(SIM.buf[SIM.buf.length - 1]); drawLog();
+  if (!SIM.iv) SIM.iv = setInterval(() => { if (!scadaVisible()) return; const c = $('#clock'); if (c) c.textContent = new Date().toLocaleTimeString('es-CL', { hour12: false }); const now = Date.now(); let k = Math.round((now - SIM.last) / 1000); SIM.last = now; if (!SIM.run) return; k = Math.max(1, Math.min(300, k)); for (let i = 1; i < k; i++) simStep(); simTick(); }, 1000);
+}
+
 /* ===== Aplicación: navegación, inicio e informe ===== */
 const TEMARIO = [
   ['Básico', '1', 'Estadística descriptiva; tipos de variables', ['desc']], ['Básico', '2', 'Toma de decisión en un entorno aleatorio: tests e intervalos de confianza', ['test']],
@@ -1888,27 +2353,32 @@ function ensureMounted(id) {
 }
 function show(id) {
   current = id; $$('.page').forEach(p => p.hidden = true);
-  $('#home').hidden = id !== 'inicio'; $('#informe').hidden = id !== 'informe';
-  if (id === 'inicio') { } else if (id === 'informe') { renderReportList(); renderPreview(); } else if (modById(id)) { const pg = ensureMounted(id); pg.el.hidden = false; }
+  $('#home').hidden = id !== 'inicio'; $('#informe').hidden = id !== 'informe'; $('#scada').hidden = id !== 'scada';
+  if (id === 'inicio' || id === 'scada') { if (id === 'scada') { renderTiles(); drawTrend(); } } else if (id === 'informe') { renderReportList(); renderPreview(); } else if (modById(id)) { const pg = ensureMounted(id); pg.el.hidden = false; }
   $$('#nav a').forEach(a => { const on = a.dataset.id === id; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
-  $('#nav').classList.remove('open'); window.scrollTo(0, 0); const t = modById(id)?.title || (id === 'informe' ? 'Informe' : 'Inicio'); document.title = `${t} · Laboratorio de Data Science`;
+  $('#nav').classList.remove('open'); window.scrollTo(0, 0); const t = modById(id)?.title || (id === 'informe' ? 'Informe' : id === 'scada' ? 'Panel SCADA' : 'Inicio'); document.title = `${t} · ${PROFILE.producto}`;
 }
-function route() { const id = (location.hash || '#inicio').slice(1); show(id === 'inicio' || id === 'informe' || modById(id) ? id : 'inicio'); }
+function route() { const id = (location.hash || '#inicio').slice(1); show(id === 'inicio' || id === 'informe' || id === 'scada' || modById(id) ? id : 'inicio'); }
 
 /* ---------- inicio ---------- */
 function buildHome() {
   const home = $('#home'); const cov = TEMARIO.map(([lvl, n, t, ids]) => `<tr><td class="l"><b>${lvl === 'Básico' ? 'B' : 'A'}${n}</b></td><td class="l">${esc(t)}</td><td class="l">${ids.map(i => `<a class="tag" href="#${i}">${esc(modById(i).title.split(':')[0].split(',')[0])}</a>`).join(' ')}</td></tr>`).join('');
+  const P_ = PROFILE, fact = (k, v) => v ? `<dt>${k}</dt><dd>${esc(v)}</dd>` : '';
   home.innerHTML = `
-  <header class="hero"><p class="eyebrow">Diplomado Data Science · Machine Learning e IA, Deep Learning · Versión 30</p><h1>Laboratorio de Data Science</h1>
-  <p class="lead">Cada metodología del temario como una calculadora que funciona con sus propios datos: resultados, gráficos, interpretación en lenguaje claro y un informe profesional que usted arma módulo a módulo.</p>
-  <div class="row"><a class="btn pri" href="#desc">Empezar por estadística descriptiva</a><a class="btn" href="#informe">Ir al informe</a></div></header>
+  <header class="hero"><svg class="sigline" viewBox="0 0 600 60" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,40 40,40 60,12 85,50 110,26 140,34 190,34 215,8 240,48 270,30 330,30 360,14 385,46 410,32 470,32 495,10 520,44 545,28 600,28"/></svg>
+  <p class="eyebrow">${esc(P_.producto)} · ${esc(P_.version)}</p><h1>${esc(P_.producto)}</h1>
+  <p class="lead">${esc(P_.lema)} Cada metodología es una calculadora que funciona con sus propios datos: resultados, gráficos, interpretación en lenguaje claro y un informe profesional que usted arma módulo a módulo.</p>
+  <p class="byline"><span class="avatar" aria-hidden="true">${esc((P_.nombre || '?').split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase())}</span><span><b>${esc(P_.nombre)}</b><br><small>${esc(P_.cargo)}${P_.org ? ' · ' + esc(P_.org) : ''}</small></span></p>
+  <div class="row"><a class="btn pri" href="#scada">Abrir panel SCADA</a><a class="btn" href="#desc">Empezar por estadística descriptiva</a><a class="btn" href="#informe">Ir al informe</a></div>
+  <div class="stats" id="homeStats"><div><b data-n="${MODS.length}">0</b><span>módulos de cálculo</span></div><div><b data-n="${TEMARIO.length}">0</b><span>temas cubiertos</span></div><div><b data-n="${GROUPS.length}">0</b><span>familias de métodos</span></div><div><b data-n="${REPORT.sections.length}">0</b><span>secciones en el informe</span></div></div></header>
   <div class="home-grid">
-   <section class="panel"><h3>Cómo se usa</h3><ol class="steps"><li><b>Elija un módulo</b> en el menú. Cada uno trae datos de ejemplo y una reseña metodológica con las fórmulas.</li><li><b>Pegue o cargue sus datos</b> (CSV) y ajuste los parámetros; pulse «Calcular».</li><li><b>Agregue al informe</b> los resultados que le sirvan. Edite títulos y comentarios.</li><li><b>Genere el informe</b> con portada, índice, resumen ejecutivo, conclusiones y anexo metodológico, y descárguelo como HTML.</li></ol>
+   <section class="panel"><h3>Cómo se usa</h3><ol class="steps"><li><b>Elija un módulo</b> en el menú o en el panel SCADA. Cada uno trae datos de ejemplo y una reseña metodológica con las fórmulas.</li><li><b>Pegue o cargue sus datos</b> (CSV) y ajuste los parámetros; pulse «Calcular».</li><li><b>Agregue al informe</b> los resultados que le sirvan. Edite títulos y comentarios.</li><li><b>Genere el informe</b> con portada, índice, resumen ejecutivo, conclusiones y anexo metodológico, y descárguelo como HTML.</li></ol>
    <p class="small">Los cálculos se ejecutan en su navegador; los datos que usted pega o carga no se envían a ningún servidor.</p></section>
-   <section class="panel"><h3>El programa</h3><dl class="facts"><dt>Modalidad</dt><dd>Online, 96 horas cronológicas</dd><dt>Horario</dt><dd>Lunes y miércoles, 19:00 a 22:00</dd><dt>Presentación</dt><dd>Jueves 17 de diciembre de 2026, 19:00</dd><dt>Inicio de clases</dt><dd>Lunes 21 de diciembre de 2026</dd><dt>Matrícula hasta</dt><dd>Martes 15 de diciembre de 2026 o hasta completar cupo</dd><dt>Software</dt><dd>Python, R, Spark, SQL; acceso a AWS</dd><dt>Contacto</dt><dd>diplomado.estadistica@pucv.cl</dd></dl></section></div>
-  <section class="panel"><h3>Mapa del temario</h3><div class="tw"><table class="t"><thead><tr><th class="l">Tema</th><th class="l">Contenido</th><th class="l">Módulos</th></tr></thead><tbody>${cov}</tbody></table></div>
-  <p class="small">B = temas básicos; A = temas avanzados, según la numeración del folleto.</p></section>
-  <section class="panel note"><h3>Alcance y límites</h3><p>Es una herramienta de estudio y análisis exploratorio, creada de forma independiente a partir del folleto del diplomado; no es material oficial de la PUCV. Los algoritmos están implementados desde cero en JavaScript y se verificaron contra valores de referencia (distribuciones t, F y χ², regresión, ANOVA, Tukey). Algunas implementaciones son versiones didácticas: SARIMA se estima por mínimos cuadrados condicionales, la SVR es lineal, el motor SQL cubre las construcciones más usadas y los precios de AWS son valores de ejemplo editables. Para decisiones críticas contraste los resultados con R o Python.</p></section>`;
+   <section class="panel"><h3>Ficha del prototipo</h3><dl class="facts">${fact('Propietario', P_.nombre)}${fact('Rol', P_.cargo)}${fact('Organización', P_.org)}${fact('Producto', P_.producto)}${fact('Versión', P_.version)}<dt>Alcance</dt><dd>${MODS.length} módulos · ${TEMARIO.length} temas · ${GROUPS.length} familias</dd><dt>Tecnología</dt><dd>HTML, CSS y JavaScript en un solo archivo, sin servidor</dd><dt>Datos</dt><dd>Se procesan localmente en el navegador</dd>${fact('Contacto', P_.contacto)}</dl><p class="small">Edite estos datos en <b>Ajustes → Identidad del prototipo</b>.</p></section></div>
+  <section class="panel"><h3>Mapa de metodologías</h3><div class="tw"><table class="t"><thead><tr><th class="l">Tema</th><th class="l">Contenido</th><th class="l">Módulos</th></tr></thead><tbody>${cov}</tbody></table></div>
+  <p class="small">B = metodologías básicas; A = metodologías avanzadas.</p></section>
+  <section class="panel note"><h3>Alcance y límites</h3><p>Prototipo diseñado por ${esc(P_.nombre)} (${esc((P_.cargo || '').toLowerCase())}). Los algoritmos están implementados desde cero en JavaScript y se verificaron contra valores de referencia (distribuciones t, F y χ², regresión, ANOVA, Tukey). Algunas implementaciones son versiones didácticas: SARIMA se estima por mínimos cuadrados condicionales, la SVR es lineal, el motor SQL cubre las construcciones más usadas, los precios de AWS son valores de ejemplo editables y las señales del panel SCADA son simuladas. Para decisiones críticas contraste los resultados con R o Python.</p></section>`;
+  $$('#homeStats b', home).forEach(b => countUp(b, +b.dataset.n, { ms: 1000 }));
 }
 
 /* ---------- informe ---------- */
@@ -1916,19 +2386,19 @@ const para = t => (t || '').split(/\n{2,}|\n/).map(s => s.trim()).filter(Boolean
 function reportHTML() {
   const M = REPORT.meta, S = REPORT.sections, fecha = M.fecha ? new Date(M.fecha + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   const used = [...new Set(S.map(s => s.mod))].map(modById).filter(Boolean);
-  let h_ = `<article class="rpt"><header class="cover">${M.org ? `<p class="org">${esc(M.org)}</p>` : ''}<h1>${esc(M.titulo || 'Informe')}</h1>${M.sub ? `<p class="sub">${esc(M.sub)}</p>` : ''}<dl>${M.autor ? `<dt>Autor</dt><dd>${esc(M.autor)}</dd>` : ''}${fecha ? `<dt>Fecha</dt><dd>${fecha}</dd>` : ''}<dt>Contenido</dt><dd>${S.length} ${plural(S.length, 'análisis', 'análisis')}</dd></dl></header>`;
+  let h_ = `<article class="rpt"><header class="cover">${M.org ? `<p class="org">${esc(M.org)}</p>` : ''}<h1>${esc(M.titulo || 'Informe')}</h1>${M.sub ? `<p class="sub">${esc(M.sub)}</p>` : ''}<dl>${M.autor ? `<dt>Autor</dt><dd>${esc(M.autor)}</dd>` : ''}${PROFILE.cargo ? `<dt>Rol</dt><dd>${esc(PROFILE.cargo)}</dd>` : ''}${fecha ? `<dt>Fecha</dt><dd>${fecha}</dd>` : ''}<dt>Contenido</dt><dd>${S.length} ${plural(S.length, 'análisis', 'análisis')}</dd></dl></header>`;
   if (S.length) h_ += `<nav class="toc"><h2>Contenido</h2><ol>${M.resumen ? '<li>Resumen ejecutivo</li>' : ''}${M.supuestos ? '<li>Alcance y supuestos</li>' : ''}${S.map(s => `<li>${esc(s.title)}</li>`).join('')}${M.concl ? '<li>Conclusiones y recomendaciones</li>' : ''}${used.length ? '<li>Anexo: metodología</li>' : ''}</ol></nav>`;
   if (M.resumen) h_ += `<section class="rs"><h2>Resumen ejecutivo</h2>${para(M.resumen)}</section>`;
   if (M.supuestos) h_ += `<section class="rs"><h2>Alcance y supuestos</h2>${para(M.supuestos)}</section>`;
   S.forEach((s, i) => { h_ += `<section class="rs"><h2><span class="n">${i + 1}</span>${esc(s.title)}</h2>${s.params ? `<p class="prm">${esc(s.params)}</p>` : ''}<div class="res">${s.html}</div>${s.note ? `<div class="analyst"><strong>Comentario del analista</strong>${para(s.note)}</div>` : ''}</section>`; });
   if (M.concl) h_ += `<section class="rs"><h2>Conclusiones y recomendaciones</h2>${para(M.concl)}</section>`;
   if (used.length) h_ += `<section class="rs annex"><h2>Anexo: metodología</h2>${used.map(m => `<h3>${esc(m.title)}</h3><div class="revb">${m.review}</div>`).join('')}</section>`;
-  return h_ + `<footer class="rfoot">Generado con el Laboratorio de Data Science · ${fecha || ''}. Los resultados son producto de cálculos automáticos sobre los datos entregados; contrástelos antes de usarlos en decisiones críticas.</footer></article>`;
+  return h_ + `<footer class="rfoot">Generado con ${esc(PROFILE.producto)} ${esc(PROFILE.version)} · diseño y prototipo de ${esc(PROFILE.nombre)}${PROFILE.org ? ' · ' + esc(PROFILE.org) : ''} · ${fecha || ''}. Los resultados son producto de cálculos automáticos sobre los datos entregados; contrástelos antes de usarlos en decisiones críticas.</footer></article>`;
 }
 function exportDoc() {
-  const css = $('#repcss').textContent + `:root{${LIGHT_TOKENS}}body{background:#e9edf3;margin:0;padding:24px 12px;font-family:system-ui,sans-serif}`; return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(REPORT.meta.titulo || 'Informe')}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap"><style>${css}</style></head><body>${reportHTML()}</body></html>`;
+  const css = $('#repcss').textContent + `:root{${LIGHT_TOKENS}}body{background:#e9edf3;margin:0;padding:24px 12px;font-family:system-ui,sans-serif}`; return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(REPORT.meta.titulo || 'Informe')}</title><style>${css}</style></head><body>${reportHTML()}</body></html>`;
 }
-let LIGHT_TOKENS = '';
+const LIGHT_TOKENS = '--bg:#edf0f6;--panel:#ffffff;--fg:#121c32;--mut:#56627a;--line:#d5dce8;--soft:#f2f5fa;--ac:#1b4fd6;--c1:#0072b2;--c2:#d98e00;--c3:#008a64;--c4:#c8501a;--c5:#8a94a6;--c6:#b8609a;--good:#0a7d4f;--bad:#c62f2f;--warn:#a35f00;--disp:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;--sans:"Public Sans","Segoe UI",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace';
 function renderPreview() { const box = $('#repPreview'); if (box) box.innerHTML = reportHTML(); const has = REPORT.sections.length > 0; ['#repDl', '#repCopy', '#repDraft'].forEach(s => { const b = $(s); if (b) b.disabled = !has; }); }
 let pvT; const pvLater = () => { clearTimeout(pvT); pvT = setTimeout(() => { saveReport(); renderPreview(); }, 250); };
 function renderReportList() {
@@ -1945,7 +2415,7 @@ function buildReportPage() {
   const head = h('header', { class: 'mh' }, h('div', null, h('p', { class: 'eyebrow' }, 'Entregable'), h('h2', null, 'Generador de informes')), h('p', { class: 'lead' }, 'Reúna los resultados de los módulos en un documento profesional con portada, índice, resumen, conclusiones y anexo metodológico.'));
   const meta = h('section', { class: 'panel' }, h('h3', null, 'Portada y textos'), h('div', { class: 'form' }, fld('titulo', 'Título'), fld('sub', 'Subtítulo'), fld('autor', 'Autor'), fld('org', 'Organización o cliente'), fld('fecha', 'Fecha', 'date'), fld('resumen', 'Resumen ejecutivo', 'text', 4), fld('supuestos', 'Alcance y supuestos', 'text', 3), fld('concl', 'Conclusiones y recomendaciones', 'text', 4)));
   const list = h('section', { class: 'panel' }, h('h3', null, 'Análisis incluidos'), h('div', { id: 'repList' }));
-  const dl = h('button', { class: 'btn pri', id: 'repDl', type: 'button', onclick: async () => { const msg = $('#repMsg'); msg.textContent = ''; try { const d = typeof claude === 'undefined' ? null : await claude.use('downloads'); if (!d) { msg.textContent = 'La descarga directa no está disponible en esta vista. Use «Copiar HTML» y guárdelo como archivo .html.'; return; } await d.save({ filename: `informe-${slug(REPORT.meta.titulo)}.html`, data: exportDoc() }); msg.textContent = 'Informe guardado. Ábralo en su navegador; desde allí puede imprimirlo o guardarlo como PDF.'; } catch (e) { msg.textContent = e && e.code === 'declined' ? 'Descarga cancelada.' : 'No se pudo guardar el archivo (' + (e.code || e.message || 'error') + '). Pruebe «Copiar HTML».'; } } }, 'Descargar informe (.html)');
+  const dl = h('button', { class: 'btn pri', id: 'repDl', type: 'button', onclick: async () => { const msg = $('#repMsg'); msg.textContent = ''; try { const d = await claude.use('downloads'); if (!d) { msg.textContent = 'La descarga directa no está disponible en esta vista. Use «Copiar HTML» y guárdelo como archivo .html.'; return; } await d.save({ filename: `informe-${slug(REPORT.meta.titulo)}.html`, data: exportDoc() }); msg.textContent = 'Informe guardado. Ábralo en su navegador; desde allí puede imprimirlo o guardarlo como PDF.'; } catch (e) { msg.textContent = e && e.code === 'declined' ? 'Descarga cancelada.' : 'No se pudo guardar el archivo (' + (e.code || e.message || 'error') + '). Pruebe «Copiar HTML».'; } } }, 'Descargar informe (.html)');
   const cp = h('button', { class: 'btn', id: 'repCopy', type: 'button', onclick: async () => { const msg = $('#repMsg'); try { await navigator.clipboard.writeText(exportDoc()); msg.textContent = 'HTML copiado al portapapeles. Péguelo en un archivo con extensión .html.'; } catch (e) { const t = h('textarea', { rows: 6, class: 'mono', 'aria-label': 'HTML del informe' }); t.value = exportDoc(); msg.textContent = 'Su navegador bloqueó el portapapeles. Seleccione y copie el texto de abajo.'; msg.after(t); t.select(); } } }, 'Copiar HTML');
   const draft = h('button', { class: 'btn', id: 'repDraft', type: 'button', onclick: () => { const bits = REPORT.sections.map(s => { const d = document.createElement('div'); d.innerHTML = s.html; const t = $('.interp', d); if (!t) return ''; const txt = t.textContent.replace(/^Interpretación/, '').trim(), first = txt.match(/^.*?[.!?](?=\s|$)(?:\s.*?[.!?](?=\s|$))?/); return `${s.title}: ${(first ? first[0] : txt).slice(0, 320)}`; }).filter(Boolean); if (!bits.length) return; REPORT.meta.resumen = bits.join('\n'); $('#rm-resumen').value = REPORT.meta.resumen; saveReport(); renderPreview(); } }, 'Redactar resumen desde las interpretaciones');
   const sample = h('button', { class: 'btn ghost', id: 'repSample', type: 'button', onclick: async e => { e.target.disabled = true; e.target.textContent = 'Preparando…'; for (const id of ['desc', 'slr', 'mlr', 'arima', 'logit']) { const pg = ensureMounted(id); await pg.ready; const out = $(`#${id}-out`), m = modById(id); if (out && !$('.err', out) && out.querySelector('.interp')) REPORT.sections.push({ id: Date.now() + id, mod: id, title: m.title, html: snapshot(out), note: '', ts: new Date().toISOString() }); } if (!M.resumen) draft.click(); saveReport(); updateBadge(); renderReportList(); renderPreview(); e.target.textContent = 'Informe de ejemplo cargado'; } }, 'Cargar informe de ejemplo');
@@ -1957,20 +2427,15 @@ function buildReportPage() {
 /* ---------- arranque ---------- */
 function buildNav() {
   const nav = $('#nav'); nav.innerHTML = '';
-  nav.append(h('a', { href: '#inicio', 'data-id': 'inicio', class: 'ni' }, 'Inicio'));
+  nav.append(h('a', { href: '#inicio', 'data-id': 'inicio', class: 'ni' }, 'Inicio'), h('a', { href: '#scada', 'data-id': 'scada', class: 'ni scadaN' }, h('span', null, h('i', { class: 'led ok' }), 'Panel SCADA'), h('small', null, 'control')));
   GROUPS.forEach(g => { const ms = MODS.filter(m => m.group === g); if (!ms.length) return; nav.append(h('div', { class: 'ng' }, g), ...ms.map(m => h('a', { href: `#${m.id}`, 'data-id': m.id, class: 'ni' }, h('span', null, m.title.replace(/^(Regresión lineal múltiple y predicción)$/, 'Regresión lineal múltiple')), h('small', null, m.ref)))); });
   nav.append(h('div', { class: 'ng' }, 'Entregable'), h('a', { href: '#informe', 'data-id': 'informe', class: 'ni' }, h('span', null, 'Informe ', h('b', { id: 'repCount', class: 'badge', hidden: true }, '0'))));
 }
-function initTheme() {
-  const root = document.documentElement, k = 'lab-tema'; let saved = null; try { saved = localStorage.getItem(k); } catch (e) { } if (saved) root.setAttribute('data-theme', saved);
-  const btn = $('#themeBtn'), eff = () => root.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  const sync = () => { btn.textContent = eff() === 'dark' ? 'Tema claro' : 'Tema oscuro'; };
-  btn.onclick = () => { const n = eff() === 'dark' ? 'light' : 'dark'; root.setAttribute('data-theme', n); try { localStorage.setItem(k, n); } catch (e) { } sync(); }; sync();
-}
 function start() {
-  loadReport(); initTheme();
-  const probe = h('div', { class: 'rpt', style: 'position:absolute;visibility:hidden' }); document.body.append(probe); const cs = getComputedStyle(probe); LIGHT_TOKENS = ['--bg', '--panel', '--fg', '--mut', '--line', '--ac', '--c1', '--c2', '--c3', '--c4', '--c5', '--c6', '--good', '--bad', '--warn', '--soft', '--mono', '--sans', '--disp'].map(k => `${k}:${cs.getPropertyValue(k).trim()}`).join(';'); probe.remove();
-  buildNav(); buildHome(); buildReportPage(); updateBadge();
+  loadReport(); if (!REPORT.meta.autor) REPORT.meta.autor = PROFILE.nombre; if (!REPORT.meta.org) REPORT.meta.org = PROFILE.org || '';
+  initAppearance(); buildSettings(); initFx(); applyIdentity();
+  buildNav(); buildHome(); buildReportPage(); buildScada(); updateBadge();
+  document.addEventListener('profile', () => { buildHome(); renderPreview(); });
   $('#menuBtn').onclick = () => { const n = $('#nav'), o = n.classList.toggle('open'); $('#menuBtn').setAttribute('aria-expanded', o); };
   window.addEventListener('hashchange', route); route();
 }
