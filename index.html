@@ -186,6 +186,27 @@ pre.json{font:12px/1.5 var(--mono);background:var(--soft);border:1px solid var(-
 @media (max-width:600px){.rpt .toc ol{columns:1}.rpt{padding:32px 18px}}
 @media print{body{background:#fff!important;padding:0!important}.rpt{box-shadow:none;border:0;max-width:none;padding:0}.rpt .rs{break-inside:auto}.fig,.kpi,table.t tr,.interp{break-inside:avoid}}
 
+/* Rutas encadenadas (sirve a la app y al informe exportado) */
+.rtp{display:inline-block;font:600 .68rem/1 var(--mono);letter-spacing:.03em;text-transform:uppercase;padding:3px 7px;border-radius:10px;border:1px solid currentColor;white-space:nowrap}
+.rtp.ok{color:var(--good)}.rtp.warn{color:var(--warn)}.rtp.bad{color:var(--bad)}.rtp.info{color:var(--mut)}
+.rt-flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px;margin:.5em 0 1.2em}
+.rt-flow>i{align-self:center;font-style:normal;color:var(--mut);font-size:1.1rem}
+.rt-n{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border:1px solid var(--line);border-left-width:5px;border-radius:6px;background:var(--panel);min-width:118px;flex:1 1 118px;max-width:200px}
+.rt-n b{font:600 .78rem var(--sans);letter-spacing:.02em}.rt-n span{font-size:.8rem;color:var(--fg)}.rt-n em{font-style:normal;font-size:.7rem;color:var(--mut)}
+.rt-n.ok{border-left-color:var(--good)}.rt-n.warn{border-left-color:var(--warn)}.rt-n.bad{border-left-color:var(--bad)}.rt-n.src,.rt-n.end{border-left-color:var(--ac);background:var(--soft)}
+.rt-banner{margin:.6em 0 1em;padding:10px 14px;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:0 6px 6px 0;background:var(--soft);font-size:.86rem;line-height:1.5}
+.rt-banner.warn{border-left-color:var(--warn)}.rt-banner code{word-break:break-all}
+.rt-step{margin:1.1em 0;padding-top:.2em;border-top:1px solid var(--line)}
+.rt-step h5{font:600 1rem var(--sans);margin:.7em 0 .3em;display:flex;align-items:center;gap:8px}
+.rt-step h5 small{font:400 .78rem var(--sans);color:var(--mut)}
+.rt-step h5 .n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--ac);color:#fff;font:600 .78rem var(--mono)}
+.rt-find,.rt-lim{list-style:none;margin:.5em 0;padding:0;display:grid;gap:6px}
+.rt-find li,.rt-lim li{font-size:.86rem;line-height:1.45}
+.rt-full{margin:.6em 0}.rt-full summary{cursor:pointer;font-size:.84rem;color:var(--ac);font-weight:600}
+.rt-full>.kpis:first-child{margin-top:.8em}
+.mut{color:var(--mut)}
+.rt-src{display:contents}
+
 </style>
 <style id="fxcss">
 /* Temas de colores sólidos (se aplican por data-theme); acento y paleta de gráficos se ajustan desde JS. */
@@ -1045,7 +1066,9 @@ function loadReport() { const r = store.get('lab-informe-v1'); if (r && r.sectio
 
 /* ---------- registro de módulos y montaje ---------- */
 const MODS = []; const reg = m => MODS.push(m);
-const GROUPS = ['Fundamentos', 'Modelos lineales', 'Cómputo intensivo', 'Series de tiempo', 'Datos: SQL y Spark', 'Aprendizaje automático', 'IA y nube'];
+const CGROUPS = ['Fundamentos', 'Modelos lineales', 'Cómputo intensivo', 'Series de tiempo', 'Datos: SQL y Spark', 'Aprendizaje automático', 'IA y nube'];
+const GROUPS = [...CGROUPS, 'Rutas'];
+const CORE = () => MODS.filter(m => m.group !== 'Rutas');
 function mountModule(m, host) {
   const api = m.build(); // {form?: Form, run(out, vals), extra?: [DOM]}
   const out = h('div', { class: 'res', id: `${m.id}-out`, 'aria-live': 'polite' }), msg = h('div', { class: 'empty' }, 'Ajuste los parámetros y pulse «Calcular».');
@@ -2025,6 +2048,305 @@ reg({
   }
 });
 
+/* ===== RUTAS: procesos encadenados con fuentes en línea ===== */
+const LV = { ok: 'Supera', warn: 'Advertencia', bad: 'No supera', info: 'Dato' };
+const fnd = (l, t) => ({ l, t });
+const pill = l => `<span class="rtp ${l}">${LV[l]}</span>`;
+const ltbl = (head, rows) => `<div class="tw"><table class="t"><thead><tr>${head.map(x => `<th class="l">${x}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td class="l">${typeof c === 'number' ? F(c, 3) : c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+const worst = fs => fs.some(f => f.l === 'bad') ? 'bad' : fs.some(f => f.l === 'warn') ? 'warn' : 'ok';
+
+/* ---------- consultas a fuentes en línea ---------- */
+async function jget(url, ms = 20000, asText = false) {
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms);
+  try { const r = await fetch(url, { signal: ac.signal }); if (!r.ok) throw new Error('la fuente respondió HTTP ' + r.status); return asText ? await r.text() : await r.json(); }
+  catch (e) { if (e.name === 'AbortError') throw new Error('se agotó el tiempo de espera'); if (e instanceof TypeError) throw new Error('el navegador no pudo completar la consulta (sin conexión o la fuente no permite consultas desde otras páginas: CORS)'); throw e; }
+  finally { clearTimeout(t); }
+}
+const dayKey = s => String(s).slice(0, 10);
+const isoDay = d => d.toISOString().slice(0, 10);
+
+/* ---------- muestras sintéticas (solo para probar sin conexión) ---------- */
+const SYN = {
+  serie() { const r = L.rng(61), rows = []; let y = 900; const d0 = Date.UTC(2025, 0, 2); for (let i = 0; i < 250; i++) { y += 0.25 + 6 * L.randn(r); rows.push([isoDay(new Date(d0 + i * 864e5)), r2(y, 2)]); } return csv(['fecha', 'valor_sintetico'], rows); },
+  aire() { const r = L.rng(62), rows = [], d0 = Date.UTC(2025, 4, 1); let e = 0; for (let i = 0; i < 90; i++) { const T = 12 - 5 * Math.sin(2 * Math.PI * i / 120) + 2 * L.randn(r), W = Math.max(0.5, 3 + L.randn(r) * 1.2), H = 55 + 10 * L.randn(r); e = 0.7 * e + L.randn(r) * 0.22; const pm25 = Math.exp(3.1 + 0.07 * (12 - T) - 0.09 * (W - 3) + e), pm10 = 1.7 * pm25 + 4 * L.randn(r) + 8, o3 = Math.max(5, 30 + 2.6 * T - 0.1 * pm25 + 4 * L.randn(r)), no2 = Math.max(2, 14 + 0.25 * pm25 + 3 * L.randn(r)), co = Math.max(0.1, 0.25 + 0.01 * pm25 + 0.05 * L.randn(r)); rows.push([isoDay(new Date(d0 + i * 864e5)), r2(pm25, 2), r2(pm10, 2), r2(o3, 2), r2(no2, 2), r2(co, 3), r2(T, 2), r2(W, 2), r2(H, 1)]); } return csv(['fecha', 'pm2_5', 'pm10', 'ozono', 'no2', 'co', 'temperatura', 'viento', 'humedad'], rows); },
+  sismos() { const r = L.rng(63), rows = [], zs_ = [[-22, -69, 100, 18], [-33, -71.5, 45, 22], [-38.5, -73, 20, 15], [-18.5, -69.5, 120, 10]], d0 = Date.UTC(2025, 0, 1); for (let i = 0; i < 420; i++) { const z = zs_[Math.floor(r() * 4)], lat = z[0] + 1.6 * L.randn(r), lon = z[1] + 0.9 * L.randn(r), dep = Math.max(2, z[2] + z[3] * L.randn(r)), mag = Math.min(7.8, 4.5 + -Math.log(1 - r()) * 0.42 + (z[2] > 90 ? 0.05 : 0)); rows.push([isoDay(new Date(d0 + Math.floor(r() * 330) * 864e5)), r2(lat, 3), r2(lon, 3), r2(dep, 1), r2(mag, 1)]); } return csv(['fecha', 'latitud', 'longitud', 'prof_km', 'mag'], rows); },
+  paises() { const r = L.rng(64), nm = 'CHL ARG BOL BRA COL CRI ECU MEX PER PRY URY PAN DOM GTM HND NIC SLV JAM ESP PRT ITA FRA DEU GBR USA CAN JPN KOR AUS NZL TUR ZAF'.split(' '), rows = nm.map(n => { const z = L.randn(r), z2 = L.randn(r); return [n, r2(Math.exp(9.2 + 0.9 * z + 0.2 * L.randn(r)), 0), r2(74 + 4 * z + 1.2 * z2 + 1.5 * L.randn(r), 1), r2(7.5 + 1.8 * z + 1.1 * z2 + 1.2 * L.randn(r), 2), r2(74 + 7 * z + 5 * z2 + 6 * L.randn(r), 1)]; }); return csv(['pais', 'pib_pc', 'esperanza_vida', 'gasto_salud', 'urbana'], rows); }
+};
+
+/* ---------- conectores ---------- */
+const SRC = {
+  mindicador: {
+    name: 'mindicador.cl · indicadores económicos de Chile', site: 'mindicador.cl', route: 'serie', syn: SYN.serie,
+    fields: [{ k: 'ind', t: 'sel', label: 'Indicador', opts: [['dolar', 'Dólar observado'], ['uf', 'UF'], ['euro', 'Euro'], ['utm', 'UTM'], ['ipc', 'IPC (variación mensual)'], ['tpm', 'Tasa de política monetaria']], val: 'dolar' }, { k: 'year', t: 'num', label: 'Año', val: 2025, min: 1990, max: 2100, step: 1 }],
+    async get(p) {
+      const url = `https://mindicador.cl/api/${p.ind}/${Math.round(p.year)}`, j = await jget(url), s = (j.serie || []).slice().sort((a, b) => a.fecha < b.fecha ? -1 : 1);
+      if (!s.length) throw new Error('la respuesta no trae observaciones');
+      return { csv: csv(['fecha', p.ind], s.map(o => [dayKey(o.fecha), o.valor])), url, fuente: 'mindicador.cl (datos del Banco Central de Chile)' };
+    }
+  },
+  openmeteo: {
+    name: 'Open-Meteo · calidad del aire y clima', site: 'open-meteo.com', route: 'aire', syn: SYN.aire,
+    fields: [{ k: 'lat', t: 'num', label: 'Latitud', val: -33.45 }, { k: 'lon', t: 'num', label: 'Longitud', val: -70.66 }, { k: 'days', t: 'num', label: 'Días hacia atrás (máx. 92)', val: 60, min: 14, max: 92, step: 1 }],
+    async get(p) {
+      const days = Math.min(92, Math.max(14, Math.round(p.days))), q = `latitude=${p.lat}&longitude=${p.lon}&past_days=${days}&forecast_days=1&timezone=${encodeURIComponent('America/Santiago')}`;
+      const ua = `https://air-quality-api.open-meteo.com/v1/air-quality?${q}&hourly=pm2_5,pm10,ozone,nitrogen_dioxide,carbon_monoxide`, uw = `https://api.open-meteo.com/v1/forecast?${q}&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m`;
+      const [a, w] = await Promise.all([jget(ua), jget(uw).catch(() => null)]);
+      const agg = (j, vars) => { const m = new Map(); j.hourly.time.forEach((t, i) => { const k = dayKey(t); vars.forEach(v => { const x = j.hourly[v] && j.hourly[v][i]; if (x == null) return; const e = m.get(k) || {}; (e[v] = e[v] || []).push(x); m.set(k, e); }); }); return m; };
+      const A = agg(a, ['pm2_5', 'pm10', 'ozone', 'nitrogen_dioxide', 'carbon_monoxide']), W = w && w.hourly ? agg(w, ['temperature_2m', 'relative_humidity_2m', 'wind_speed_10m']) : null, mean = x => x && x.length ? +L.mean(x).toFixed(2) : '';
+      const keys = [...A.keys()].sort().slice(0, -1), rows = [];
+      for (const k of keys) { const e = A.get(k); if (!e.pm2_5 || e.pm2_5.length < 20) continue; const we = W && W.get(k); rows.push([k, mean(e.pm2_5), mean(e.pm10), mean(e.ozone), mean(e.nitrogen_dioxide), mean(e.carbon_monoxide), ...(W ? [mean(we && we.temperature_2m), mean(we && we.wind_speed_10m), mean(we && we.relative_humidity_2m)] : [])]); }
+      if (rows.length < 10) throw new Error('la respuesta no trae suficientes días completos');
+      return { csv: csv(['fecha', 'pm2_5', 'pm10', 'ozono', 'no2', 'co', ...(W ? ['temperatura', 'viento', 'humedad'] : [])], rows), url: ua, fuente: 'Open-Meteo (modelo CAMS de calidad del aire y pronósticos meteorológicos)', nota: 'Promedios diarios de valores modelados, no mediciones de una estación. Se excluye el día en curso.' + (W ? '' : ' La consulta meteorológica falló: sin temperatura, viento ni humedad.') };
+    }
+  },
+  usgs: {
+    name: 'USGS · catálogo de sismos', site: 'earthquake.usgs.gov', route: 'sismos', syn: SYN.sismos,
+    fields: [{ k: 'days', t: 'num', label: 'Días hacia atrás', val: 365, min: 30, max: 3650, step: 1 }, { k: 'mag', t: 'num', label: 'Magnitud mínima', val: 4.5, min: 2.5, max: 8, step: 0.1 }],
+    async get(p) {
+      const t1 = new Date(), t0 = new Date(t1.getTime() - Math.round(p.days) * 864e5), url = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${isoDay(t0)}&endtime=${isoDay(t1)}&minmagnitude=${p.mag}&minlatitude=-56&maxlatitude=-17&minlongitude=-76&maxlongitude=-66&orderby=time&limit=2000`, j = await jget(url);
+      const rows = (j.features || []).filter(f => f.properties.mag != null && f.geometry).map(f => [isoDay(new Date(f.properties.time)), r2(f.geometry.coordinates[1], 3), r2(f.geometry.coordinates[0], 3), r2(f.geometry.coordinates[2], 1), f.properties.mag]);
+      if (rows.length < 10) throw new Error('la consulta devolvió muy pocos sismos');
+      return { csv: csv(['fecha', 'latitud', 'longitud', 'prof_km', 'mag'], rows), url, fuente: 'USGS Earthquake Catalog (servicio FDSN)', nota: 'Recuadro geográfico aproximado de Chile continental y mar adyacente (puede incluir sismos de países vecinos).' };
+    }
+  },
+  worldbank: {
+    name: 'Banco Mundial · indicadores por país', site: 'api.worldbank.org', route: 'paises', syn: SYN.paises,
+    fields: [{ k: 'paises', t: 'text', label: 'Países (códigos ISO3 separados por punto y coma)', val: 'CHL;ARG;BOL;BRA;COL;CRI;ECU;MEX;PER;PRY;URY;PAN;DOM;GTM;HND;NIC;SLV;JAM;ESP;PRT;ITA;FRA;DEU;GBR;USA;CAN;JPN;KOR;AUS;NZL;TUR;ZAF' }],
+    async get(p) {
+      const cs = p.paises.replace(/\s/g, ''), inds = [['pib_pc', 'NY.GDP.PCAP.CD'], ['esperanza_vida', 'SP.DYN.LE00.IN'], ['gasto_salud', 'SH.XPD.CHEX.GD.ZS'], ['urbana', 'SP.URB.TOTL.IN.ZS']], urls = inds.map(i => `https://api.worldbank.org/v2/country/${cs}/indicator/${i[1]}?format=json&per_page=300&mrv=1&date=2015:2024`);
+      const js = await Promise.all(urls.map(u => jget(u))), M = new Map();
+      js.forEach((j, k) => (j[1] || []).forEach(o => { if (o.value == null) return; const e = M.get(o.countryiso3code) || {}; e[inds[k][0]] = o.value; M.set(o.countryiso3code, e); }));
+      const rows = [...M.entries()].filter(([, e]) => inds.every(i => e[i[0]] != null)).map(([c, e]) => [c, ...inds.map(i => r2(e[i[0]], 2))]);
+      if (rows.length < 6) throw new Error('la respuesta no trae suficientes países con los cuatro indicadores');
+      return { csv: csv(['pais', ...inds.map(i => i[0])], rows), url: urls[0], fuente: 'Banco Mundial (Indicators API v2)', nota: 'Último valor disponible entre 2015 y 2024 para cada indicador; el año puede diferir entre países.' };
+    }
+  },
+  url: {
+    name: 'Dirección (URL) de un archivo CSV', site: 'cualquiera que permita consultas', route: null, syn: SYN.serie,
+    fields: [{ k: 'u', t: 'text', label: 'URL del CSV (con encabezado)', val: '' }],
+    async get(p) { if (!/^https:\/\//i.test(p.u)) throw new Error('indique una URL que comience con https://'); const txt = await jget(p.u, 20000, true); L.parseTable(txt); return { csv: txt, url: p.u, fuente: 'CSV en ' + p.u }; }
+  }
+};
+
+/* ---------- rutas ---------- */
+const ROUTES = {
+  serie: { name: 'Serie de tiempo: del dato al pronóstico', src: 'mindicador', tgt: null, s: 1, steps: ['desc', 'unit', 'arima'], lead: 'Describe la serie, comprueba si es estacionaria, decide cuánto diferenciar y pronostica validando contra una predicción ingenua.' },
+  aire: { name: 'Calidad del aire: modelo explicativo y pronóstico', src: 'openmeteo', tgt: 'pm2_5', s: 7, pvars: ['temperatura', 'viento', 'humedad'], steps: ['desc', 'corr', 'mlr', 'outl', 'het', 'arima'], lead: 'Elige predictores meteorológicos por correlación, ajusta una regresión, revisa puntos influyentes y corrige la inferencia si los residuos incumplen supuestos; luego pronostica.' },
+  sismos: { name: 'Sismicidad: zonas y diferencias de magnitud', src: 'usgs', tgt: 'mag', s: 1, steps: ['desc', 'kmeans', 'anova'], cvars: ['latitud', 'longitud', 'prof_km'], lead: 'Agrupa los eventos por ubicación y profundidad (sin usar la magnitud) y contrasta si la magnitud difiere entre las zonas encontradas.' },
+  paises: { name: 'Países: estructura común y grupos', src: 'worldbank', tgt: 'pib_pc', s: 1, steps: ['desc', 'pca', 'kmeans'], lead: 'Resume los indicadores en componentes principales y agrupa los países con las mismas variables, verificando la calidad de los grupos.' }
+};
+const SM = {
+  desc: ['Estadística descriptiva', 'Explorar'], unit: ['Raíz unitaria', 'Validar'], arima: ['SARIMA y pronóstico', 'Modelar'], corr: ['Correlación', 'Explorar'], mlr: ['Regresión múltiple', 'Modelar'],
+  outl: ['Puntos influyentes', 'Validar'], het: ['Heterocedasticidad y autocorrelación', 'Validar'], kmeans: ['K-medias', 'Modelar'], anova: ['ANOVA de una vía', 'Validar'], pca: ['Componentes principales', 'Explorar']
+};
+
+/* ejecuta el módulo real (misma salida que su página) sobre la tabla activa */
+async function modHTML(id, text, setv) {
+  try {
+    const m = modById(id), api = m.build(), fm = api.form; fm.els.data.value = text; fm.refresh();
+    for (const [k, v] of Object.entries(setv || {})) { const el = fm.els[k]; if (!el) continue; if (el.classList && el.classList.contains('chips')) $$('input', el).forEach(i => i.checked = v.includes(i.value)); else if (el.type === 'checkbox') el.checked = !!v; else el.value = v; }
+    const out = h('div'); await api.run(out, fm.get()); return out.innerHTML;
+  } catch (e) { return `<div class="err"><strong>El módulo «${esc(id)}» no pudo mostrar su salida completa.</strong> ${esc(e.message || String(e))}</div>`; }
+}
+const colOf = (tb, n) => tb.cols.find(c => c.name === n);
+const numCols = (tb, skip = []) => tb.cols.filter(c => c.num && !skip.includes(c.name) && !/^(t|tiempo|indice|id)$/i.test(c.name));
+const pickD = y => { const lg = Math.min(2, Math.floor(y.length / 10)), a0 = L.adf(y, lg, 'c'), a1 = L.adf(y, lg, 'ct'), a2 = L.adf(L.diff(y), lg, 'c'); const d = a0.reject5 ? 0 : a1.reject5 ? 1 : a2.reject5 ? 1 : 2; return { d, a0, a1, a2, trendOnly: !a0.reject5 && a1.reject5 }; };
+function hacSE(XI, res, XtXi, lag) {
+  const k = XI[0].length, n = XI.length, S = Array.from({ length: k }, () => new Array(k).fill(0));
+  for (let t = 0; t < n; t++) for (let a = 0; a < k; a++) for (let b = 0; b < k; b++) S[a][b] += res[t] ** 2 * XI[t][a] * XI[t][b];
+  for (let l = 1; l <= lag; l++) { const w = 1 - l / (lag + 1); for (let t = l; t < n; t++) { const e = res[t] * res[t - l] * w; for (let a = 0; a < k; a++) for (let b = 0; b < k; b++) S[a][b] += e * (XI[t][a] * XI[t - l][b] + XI[t - l][a] * XI[t][b]); } }
+  const cov = L.M.mul(L.M.mul(XtXi, S), XtXi), f = n / (n - k); return cov.map((r, i) => Math.sqrt(Math.max(r[i], 0) * f));
+}
+const withCol = (ctx, name, vals) => { const tb = ctx.tb, head = [...tb.head, name], rows = tb.body.map((r, i) => [...r, vals[i] ?? '']); ctx.text = [head.join(','), ...rows.map(r => r.join(','))].join('\n'); ctx.tb = L.parseTable(ctx.text); };
+
+/* ---------- pasos ---------- */
+const STEPS = {};
+STEPS.desc = async c => {
+  const tb = c.tb, nums = tb.cols.filter(x => x.num), f = [], rows = [];
+  nums.forEach(col => { const v = col.v.filter(x => !isNaN(x)), n = v.length, sd = n > 1 ? L.sd(v) : 0, m = n ? L.mean(v) : NaN, s = L.sorted(v), q1 = L.quantile(v, .25, s), q3 = L.quantile(v, .75, s), iq = q3 - q1, out = v.filter(x => x < q1 - 1.5 * iq || x > q3 + 1.5 * iq).length, sk = n > 2 && sd > 0 ? v.reduce((a, x) => a + ((x - m) / sd) ** 3, 0) * n / ((n - 1) * (n - 2)) : 0; rows.push({ name: col.name, n, miss: tb.n - n, m, sd, min: s[0], max: s[n - 1], out, sk }); });
+  const T = rows.find(r => r.name === c.target), miss = rows.filter(r => r.miss / tb.n > 0.05);
+  f.push(tb.n >= 60 ? fnd('ok', `${tb.n} observaciones: tamaño suficiente para los pasos siguientes.`) : tb.n >= 25 ? fnd('warn', `${tb.n} observaciones: justo para modelar; las conclusiones tendrán poca potencia.`) : fnd('bad', `Solo ${tb.n} observaciones: insuficiente para modelar con respaldo.`));
+  f.push(miss.length ? fnd('warn', `Faltantes superiores al 5 % en ${miss.map(r => r.name).join(', ')}; esas filas se excluyen de los modelos.`) : fnd('ok', 'Sin faltantes relevantes (5 % o menos por variable).'));
+  if (T && c.route !== 'serie') { f.push(T.out / T.n > .05 ? fnd('warn', `«${c.target}» tiene ${T.out} valores atípicos (${F(100 * T.out / T.n, 1)} %); se evaluará su influencia.`) : fnd('ok', `«${c.target}» sin proporción relevante de atípicos (${T.out}).`)); if (Math.abs(T.sk) > 1) f.push(fnd('warn', `«${c.target}» es asimétrica (coeficiente ${F(T.sk, 2)}): la media resume mal; considere una transformación logarítmica.`)); }
+  c.facts.n = tb.n;
+  return { f, in: `Tabla activa de ${tb.n} filas × ${tb.cols.length} columnas`, dec: `Variable objetivo: «${c.target}»; ${nums.length} variables numéricas`, out: 'La misma tabla, con calidad de datos verificada', html: tbl(['Variable', 'n', 'Faltantes', 'Media', 'D.E.', 'Mín.', 'Máx.', 'Atípicos', 'Asimetría'], rows.map(r => [esc(r.name), r.n, r.miss, r.m, r.sd, r.min, r.max, r.out, r.sk]), { d: 3 }), mod: await modHTML('desc', c.text, { col: c.target }) };
+};
+STEPS.unit = async c => {
+  const y = colOf(c.tb, c.target).v.filter(t => !isNaN(t)), f = [];
+  if (y.length < 20) { f.push(fnd('bad', 'Serie con menos de 20 datos: el test de raíz unitaria no es concluyente.')); c.d = 1; return { f, in: `Serie «${c.target}»`, dec: 'Sin decisión (serie muy corta); se usa d = 1', out: 'd = 1', html: '', mod: '' }; }
+  const r = pickD(y); c.d = r.d; c.facts.unit = r;
+  f.push(r.d === 0 ? fnd('ok', `Se rechaza la raíz unitaria (τ = ${F(r.a0.tau, 2)}; crítico 5 % = ${F(r.a0.crit[5], 2)}): la serie es estacionaria en nivel.`) : fnd('warn', `No se rechaza la raíz unitaria en nivel (τ = ${F(r.a0.tau, 2)}): la serie no es estacionaria${r.trendOnly ? ', aunque lo es en torno a una tendencia' : ''}; se diferenciará ${r.d} vez/veces.`));
+  if (r.d > 0) f.push(r.a2.reject5 ? fnd('ok', `La primera diferencia sí es estacionaria (τ = ${F(r.a2.tau, 2)}): orden de integración 1.`) : fnd('warn', 'Ni la primera diferencia resulta claramente estacionaria; se usa d = 2 y debe revisarse el resultado.'));
+  return { f, in: `Serie «${c.target}» (n = ${y.length})`, dec: `Orden de diferenciación d = ${r.d}`, out: `d = ${r.d} hacia SARIMA`, html: tbl(['Serie', 'τ', 'Crítico 5 %', 'Conclusión'], [[esc(c.target) + ' (nivel, constante)', r.a0.tau, r.a0.crit[5], r.a0.reject5 ? 'Estacionaria' : 'Raíz unitaria'], [esc(c.target) + ' (nivel, con tendencia)', r.a1.tau, r.a1.crit[5], r.a1.reject5 ? 'Estacionaria en torno a tendencia' : 'Raíz unitaria'], ['Primera diferencia', r.a2.tau, r.a2.crit[5], r.a2.reject5 ? 'Estacionaria' : 'Raíz unitaria']], { d: 3 }), mod: await modHTML('unit', c.text, { col: c.target, tr: 'ct', lags: Math.min(2, Math.floor(y.length / 10)), reps: 200, n: 100 }) };
+};
+STEPS.arima = async c => {
+  const y = colOf(c.tb, c.target).v.filter(t => !isNaN(t)), n = y.length, f = []; let s = Math.round(c.s) || 1; const note = [];
+  if (s > 1 && n < 4 * s) { note.push(`Con ${n} datos no se modela estacionalidad de período ${s}; se usa s = 1.`); s = 1; }
+  const d = c.d ?? pickD(y).d; if (c.d == null) c.d = d;
+  const base = { d, D: s > 1 ? 1 : 0, s }, fit = (yy, o) => L.arima(yy, o); let best = null;
+  for (let p = 0; p <= 2; p++) for (let q = 0; q <= 2; q++) for (let P = 0; P <= (s > 1 ? 1 : 0); P++) for (let Q = 0; Q <= (s > 1 ? 1 : 0); Q++) { try { const o = { ...base, p, q, P, Q }, m = fit(y, o); if (isFinite(m.aic) && (!best || m.aic < best.m.aic)) best = { o, m }; } catch (e) { } }
+  if (!best) { f.push(fnd('bad', 'No fue posible ajustar un modelo SARIMA con esta serie.')); return { f, in: `Serie «${c.target}»`, dec: 'Sin modelo', out: '—', html: '', mod: '' }; }
+  const { o, m } = best, lbH = Math.max(5, Math.min(20, Math.floor(n / 4))), lb = L.ljungBox(m.e.slice(m.burn), lbH, o.p + o.q + o.P + o.Q), h_ = Math.max(1, Math.round(c.h)), fc = L.arimaForecast(y, m, h_);
+  const label = `SARIMA(${o.p},${o.d},${o.q})(${o.P},${o.D},${o.Q})${s > 1 ? s : ''}`;
+  f.push(lb.p > .05 ? fnd('ok', `Residuos sin autocorrelación (Ljung–Box p = ${P(lb.p)}): el modelo captura la dependencia temporal.`) : fnd('warn', `Residuos con autocorrelación remanente (Ljung–Box p = ${P(lb.p)}): los intervalos del pronóstico son optimistas.`));
+  const h0 = Math.max(3, Math.min(h_, Math.floor(n / 5))); let bt = null;
+  try { const tr = y.slice(0, n - h0), m2 = fit(tr, o), f0 = L.arimaForecast(tr, m2, h0), last = tr[tr.length - 1], real = y.slice(n - h0), rm = Math.sqrt(L.mean(real.map((v, i) => (v - f0[i].f) ** 2))), rn = Math.sqrt(L.mean(real.map(v => (v - last) ** 2))); bt = { h0, rm, rn, ratio: rm / (rn || 1e-12) }; } catch (e) { }
+  if (bt) f.push(bt.ratio < 0.9 ? fnd('ok', `Validación fuera de muestra (${bt.h0} últimos datos): el error del modelo (${F(bt.rm, 3)}) es ${F(bt.ratio, 2)} veces el de repetir el último valor (${F(bt.rn, 3)}): el modelo aporta.`) : bt.ratio < 1.1 ? fnd('warn', `Validación fuera de muestra: el modelo (${F(bt.rm, 3)}) rinde igual que repetir el último valor (${F(bt.rn, 3)}); el pronóstico no mejora una predicción trivial.`) : fnd('bad', `Validación fuera de muestra: el modelo (${F(bt.rm, 3)}) rinde peor que repetir el último valor (${F(bt.rn, 3)}); no se recomienda usar su pronóstico.`));
+  const e = fc[fc.length - 1], w0 = fc[0].hi - fc[0].lo, w1 = e.hi - e.lo; f.push(w1 > 3 * w0 ? fnd('warn', `La banda del pronóstico se ensancha ${F(w1 / w0, 1)} veces hasta el período ${h_}: el horizonte lejano es poco informativo.`) : fnd('ok', `Banda del 95 % razonable a ${h_} períodos (${F(e.lo, 2)} a ${F(e.hi, 2)}).`));
+  note.forEach(t => f.push(fnd('info', t))); c.facts.arima = { label, lb, bt, last: e, h: h_, y0: y[n - 1] };
+  const fcRows = fc.slice(0, 10).map((v, i) => [n + i + 1, v.f, v.lo, v.hi]);
+  return { f, in: `Serie «${c.target}» con d = ${o.d}${c.d != null ? ' (del paso anterior)' : ''}`, dec: `${label} elegido por AIC (${F(m.aic, 1)})`, out: `Pronóstico a ${h_} períodos con validación`, html: kpis([['Modelo', label], ['AIC', m.aic], ['Ljung–Box residuos', P(lb.p)], ['Pronóstico final', e.f, `[${F(e.lo, 2)} ; ${F(e.hi, 2)}]`]]) + tbl(['Período', 'Pronóstico', 'Inferior 95 %', 'Superior 95 %'], fcRows, { d: 3 }), mod: await modHTML('arima', c.text, { col: c.target, s, p: o.p, d: o.d, q: o.q, P: o.P, D: o.D, Q: o.Q, h: h_, search: false, lags: lbH }) };
+};
+STEPS.corr = async c => {
+  const tb = c.tb, T = colOf(tb, c.target), R = ROUTES[c.route], f = [], rs = []; let cand = numCols(tb, [c.target]);
+  if (R.pvars) { const sub = cand.filter(x => R.pvars.includes(x.name)); if (sub.length) { cand = sub; f.push(fnd('info', `Se consideran solo variables meteorológicas (${sub.map(x => x.name).join(', ')}) como posibles explicativas; los demás contaminantes se excluyen para no explicar un contaminante con otro.`)); } else f.push(fnd('warn', 'La tabla no trae variables meteorológicas; se consideran los demás contaminantes, lo que vuelve el modelo casi circular.')); }
+  const pr = (a, b) => { const x = [], y = []; for (let i = 0; i < tb.n; i++) if (!isNaN(a.v[i]) && !isNaN(b.v[i])) { x.push(a.v[i]); y.push(b.v[i]); } return x.length >= 8 ? { r: L.corr(x, y), n: x.length, p: L.pearsonTest(x, y).p } : null; };
+  cand.forEach(k => { const r = pr(T, k); if (r && !isNaN(r.r)) rs.push({ name: k.name, col: k, ...r }); }); rs.sort((a, b) => Math.abs(b.r) - Math.abs(a.r));
+  const sel = [], drop = []; for (const o of rs) { if (Math.abs(o.r) < 0.3 || sel.length >= 4) break; const cl = sel.find(s => { const q = pr(s.col, o.col); return q && Math.abs(q.r) > 0.85; }); if (cl) { drop.push(`${o.name} (colineal con ${cl.name})`); continue; } sel.push(o); }
+  if (!sel.length && rs.length) { sel.push(rs[0]); f.push(fnd('warn', `Ninguna variable alcanza |r| ≥ 0,30 con «${c.target}»; se retiene la mejor (${rs[0].name}, r = ${F(rs[0].r, 2)}) y el modelo tendrá poco poder explicativo.`)); }
+  else if (sel.length) f.push(fnd('ok', `Predictores seleccionados por |r| ≥ 0,30 con «${c.target}»: ${sel.map(s => `${s.name} (r = ${F(s.r, 2)})`).join(', ')}.`));
+  if (drop.length) f.push(fnd('info', `Descartados por colinealidad (|r| > 0,85 con uno ya elegido): ${drop.join('; ')}.`));
+  if (!sel.length) { f.push(fnd('bad', 'No hay variables numéricas con las que relacionar el objetivo.')); }
+  c.preds = sel.map(s => s.name); c.facts.corr = sel;
+  return { f, in: `Tabla activa, objetivo «${c.target}»`, dec: `Predictores: ${c.preds.join(', ') || 'ninguno'}`, out: 'Lista de predictores al modelo', html: tbl(['Variable', 'r con ' + esc(c.target), 'n', 'p-valor', 'Decisión'], rs.map(o => [esc(o.name), o.r, o.n, P(o.p), c.preds.includes(o.name) ? '<b class="good">Retenida</b>' : (drop.some(d => d.startsWith(o.name + ' ')) ? 'Colineal' : 'Descartada')]), { d: 3 }), mod: sel.length ? await modHTML('corr', c.text, { x: sel[0].name, y: c.target, m: 'p' }) : '' };
+};
+STEPS.mlr = async c => {
+  const f = [], D = design(c.tb, c.target, c.preds), m = olsFit(D), k = m.k, vif = D.X[0].length > 1 ? D.names.map((_, j) => { const oth = D.X.map(r => r.filter((_, q) => q !== j)), mm = L.ols(L.withIntercept(oth), D.X.map(r => r[j])); return 1 / (1 - mm.r2); }) : [];
+  c.model = { D, m }; const sigv = D.names.filter((_, j) => m.p[j + 1] < .05);
+  f.push(m.pF < .05 ? fnd('ok', `El modelo es globalmente significativo (F = ${F(m.F, 2)}; p ${P(m.pF)}).`) : fnd('bad', `El modelo no es globalmente significativo (p = ${P(m.pF)}): no hay evidencia de que los predictores expliquen «${c.target}».`));
+  f.push(m.adj >= .5 ? fnd('ok', `R² ajustado = ${F(m.adj, 3)}: explica buena parte de la variabilidad.`) : m.adj >= .25 ? fnd('warn', `R² ajustado = ${F(m.adj, 3)}: explicación parcial; queda variabilidad sin modelar.`) : fnd('bad', `R² ajustado = ${F(m.adj, 3)}: el modelo explica poco.`));
+  f.push(vif.some(v => v > 10) ? fnd('bad', `Colinealidad severa (VIF > 10 en ${D.names.filter((_, j) => vif[j] > 10).join(', ')}): los coeficientes individuales no son interpretables.`) : vif.some(v => v > 5) ? fnd('warn', `Colinealidad moderada (VIF > 5 en ${D.names.filter((_, j) => vif[j] > 5).join(', ')}).`) : fnd('ok', 'Sin colinealidad relevante (VIF ≤ 5).'));
+  if (D.n < 10 * (k - 1)) f.push(fnd('warn', `Solo ${D.n} observaciones para ${k - 1} predictores (menos de 10 por variable): riesgo de sobreajuste.`));
+  c.facts.mlr = { r2: m.r2, adj: m.adj, sig: sigv, n: D.n, k: k - 1 };
+  return { f, in: `Predictores del paso anterior: ${c.preds.join(', ')}`, dec: `Regresión de «${c.target}» con ${k - 1} predictores (n = ${D.n})`, out: 'Residuos y ajuste del modelo', html: fitStats(m) + coefTable(m, D.names, .95), mod: await modHTML('mlr', c.text, { y: c.target, x: c.preds, hyp: '', real: 1, conf: .95 }) };
+};
+STEPS.outl = async c => {
+  const f = [], { D, m } = c.model, n = D.n, thr = 4 / n, fl = m.cook.map((v, i) => [v, i]).filter(a => a[0] > thr).sort((a, b) => b[0] - a[0]), cap = Math.max(1, Math.floor(n * .1)), drop = new Set(fl.slice(0, cap).map(a => a[1]));
+  let html = kpis([['Umbral de Cook (4/n)', thr], ['Observaciones sobre el umbral', fl.length], ['Máximo de Cook', Math.max(...m.cook)]]);
+  if (!fl.length) { f.push(fnd('ok', 'Ninguna observación supera el umbral de Cook: el ajuste no depende de puntos aislados.')); c.facts.outl = { n: 0 }; }
+  else {
+    const X2 = D.X.filter((_, i) => !drop.has(i)), y2 = D.y.filter((_, i) => !drop.has(i)), m2 = L.ols(L.withIntercept(X2), y2), nm = ['(Intercepto)', ...D.names], flips = [], lost = [];
+    nm.forEach((t, j) => { if (j > 0 && Math.sign(m.b[j]) !== Math.sign(m2.b[j])) flips.push(t); if (j > 0 && (m.p[j] < .05) !== (m2.p[j] < .05)) lost.push(t); });
+    f.push(!flips.length && !lost.length ? fnd('ok', `${fl.length} observaciones superan el umbral, pero al excluir las ${drop.size} más influyentes ningún coeficiente cambia de signo ni de significancia: la conclusión es robusta.`) : fnd('warn', `Al excluir las ${drop.size} observaciones más influyentes cambian ${[...flips.map(t => t + ' (signo)'), ...lost.map(t => t + ' (significancia)')].join(', ')}: la conclusión depende de pocos puntos.`));
+    c.facts.outl = { n: fl.length, flips, lost };
+    html += tbl(['Término', 'Coef. (todas)', 'Coef. (sin influyentes)', 'p (todas)', 'p (sin influyentes)'], nm.map((t, j) => [esc(t), m.b[j], m2.b[j], P(m.p[j]), P(m2.p[j])]), { d: 3 });
+  }
+  return { f, in: 'Residuos y apalancamiento del modelo anterior', dec: fl.length ? `Prueba de sensibilidad excluyendo ${Math.min(cap, fl.length)} puntos` : 'Sin puntos influyentes', out: 'Modelo validado frente a atípicos', html, mod: await modHTML('outl', c.text, { y: c.target, x: c.preds }) };
+};
+STEPS.het = async c => {
+  const f = [], { D, m } = c.model, n = D.n, k = m.k, XI = L.withIntercept(D.X), e2 = m.res.map(e => e * e), aux = (X, y) => L.ols(X, y).r2;
+  const bp = n * aux(XI, e2), bpP = L.chi2sf(bp, k - 1), dw = L.dw(m.res), lag = m.res.slice(0, -1), Xbg = XI.slice(1).map((r, i) => [...r, lag[i]]), bg = (n - 1) * aux(Xbg, m.res.slice(1)), bgP = L.chi2sf(bg, 1);
+  const het = bpP < .05, ac = bgP < .05 || dw < 1.5;
+  f.push(het ? fnd('warn', `Heterocedasticidad (Breusch–Pagan p = ${P(bpP)}): los errores estándar de MCO no son confiables.`) : fnd('ok', `Sin evidencia de heterocedasticidad (Breusch–Pagan p = ${P(bpP)}).`));
+  f.push(ac ? fnd('warn', `Autocorrelación de residuos (Durbin–Watson = ${F(dw, 2)}; Breusch–Godfrey p = ${P(bgP)}): las pruebas t de MCO sobrestiman la significancia.`) : fnd('ok', `Sin evidencia de autocorrelación (Durbin–Watson = ${F(dw, 2)}).`));
+  const nm = ['(Intercepto)', ...D.names], L_ = Math.max(1, Math.floor(4 * Math.pow(n / 100, 2 / 9))), se = hacSE(XI, m.res, m.XtXi, L_), ph = m.b.map((b, j) => L.tp2(b / se[j], m.df)), changed = [], kept = [];
+  nm.forEach((t, j) => { if (j === 0) return; const a = m.p[j] < .05, b = ph[j] < .05; if (a && !b) changed.push(t); else if (a && b) kept.push(t); });
+  if (het || ac) f.push(changed.length ? fnd('warn', `Conclusión corregida: con errores estándar robustos (Newey–West, ${L_} rezagos) ${changed.join(', ')} deja${changed.length > 1 ? 'n' : ''} de ser significativa${changed.length > 1 ? 's' : ''}. Solo ${kept.length ? kept.join(', ') : 'ninguna variable'} se sostiene.`) : fnd('ok', 'Con errores estándar robustos (Newey–West) las variables significativas se mantienen: la conclusión del modelo resiste la corrección.'));
+  c.facts.het = { het, ac, dw, bpP, bgP, changed, kept, robust: het || ac };
+  return { f, in: 'Residuos ordenados en el tiempo del modelo', dec: het || ac ? 'Inferencia recalculada con errores robustos (Newey–West)' : 'Se mantiene la inferencia de MCO', out: 'Coeficientes con inferencia válida', html: kpis([['Breusch–Pagan', P(bpP), 'LM = ' + F(bp, 2)], ['Durbin–Watson', dw], ['Breusch–Godfrey', P(bgP)]]) + tbl(['Término', 'Coef.', 'EE (MCO)', 'p (MCO)', 'EE robusto', 'p robusto'], nm.map((t, j) => [esc(t), m.b[j], m.se[j], P(m.p[j]), se[j], P(ph[j])]), { d: 3 }), mod: await modHTML('het', c.text, { y: c.target, x: c.preds, p: 1, q: 0 }) };
+};
+STEPS.kmeans = async c => {
+  const R = ROUTES[c.route], f = [], vars = R.cvars || numCols(c.tb).map(x => x.name), nmx = numMatrix(c.tb, vars), X0 = nmx.X, X = zs(X0), n = X.length, rnd = L.rng(3), best = kk => { let b = null; for (let r = 0; r < 8; r++) { const mm = L.kmeans(X, kk, rnd); if (!b || mm.inertia < b.inertia) b = mm; } return b; };
+  if (n < 12) { f.push(fnd('bad', 'Muy pocas observaciones completas para agrupar.')); return { f, in: '', dec: 'Sin grupos', out: '—', html: '', mod: '' }; }
+  const kmax = Math.min(6, n - 1), ks = [], sil = []; for (let kk = 2; kk <= kmax; kk++) { const mm = best(kk); ks.push(kk); sil.push(L.silhouette(X, mm.lab, kk).mean); }
+  const kOpt = ks[sil.indexOf(Math.max(...sil))], km = best(kOpt), s = Math.max(...sil), sizes = Array.from({ length: kOpt }, (_, j) => km.lab.filter(l => l === j).length);
+  f.push(s >= .5 ? fnd('ok', `Grupos bien separados (silueta ${F(s, 2)} con k = ${kOpt}).`) : s >= .25 ? fnd('warn', `Estructura de grupos moderada (silueta ${F(s, 2)} con k = ${kOpt}): interprete los grupos como tendencias, no como categorías nítidas.`) : fnd('bad', `Estructura de grupos débil (silueta ${F(s, 2)}): los datos no se agrupan de forma natural; no use los grupos para decidir.`));
+  f.push(Math.min(...sizes) / n < .05 ? fnd('warn', `Hay un grupo con menos del 5 % de los casos (${Math.min(...sizes)}): puede ser un conjunto de atípicos y no un segmento.`) : fnd('ok', `Tamaños de grupo equilibrados (${sizes.join(', ')}).`));
+  const lab = new Array(c.tb.n).fill(''); nmx.idx.forEach((ri, i) => lab[ri] = 'G' + (km.lab[i] + 1)); withCol(c, 'grupo', lab); c.facts.km = { k: kOpt, sil: s, sizes, vars };
+  const prof = km.C.map((_, j) => { const mem = km.lab.map((l, i) => l === j ? i : -1).filter(i => i >= 0); return [`G${j + 1}`, sizes[j], F(100 * sizes[j] / n, 1) + ' %', ...vars.map((_, q) => L.mean(mem.map(i => X0[i][q])))]; });
+  return { f, in: `Variables: ${vars.join(', ')} (estandarizadas)`, dec: `k = ${kOpt} por máxima silueta (se probaron k = 2 a ${kmax})`, out: 'Tabla con la columna «grupo»', html: tbl(['Grupo', 'n', '%', ...vars.map(esc)], prof, { d: 2 }), mod: await modHTML('kmeans', c.text, { x: vars, sc: true, k: kOpt, kmax, seed: 3 }) };
+};
+STEPS.anova = async c => {
+  const f = [], y = colOf(c.tb, c.target), g = colOf(c.tb, 'grupo'), G = new Map();
+  for (let i = 0; i < c.tb.n; i++) if (!isNaN(y.v[i]) && g.raw[i] !== '') { (G.get(g.raw[i]) || G.set(g.raw[i], []).get(g.raw[i])).push(y.v[i]); }
+  const gs = [...G.entries()].filter(([, v]) => v.length >= 2).sort(), N = L.sum(gs.map(([, v]) => v.length)), k = gs.length, gm = L.mean([].concat(...gs.map(([, v]) => v))), ssb = L.sum(gs.map(([, v]) => v.length * (L.mean(v) - gm) ** 2)), ssw = L.sum(gs.map(([, v]) => L.sum(v.map(x => (x - L.mean(v)) ** 2))));
+  if (k < 2) { f.push(fnd('bad', 'Hay menos de dos grupos con datos suficientes.')); return { f, in: '', dec: 'Sin contraste', out: '—', html: '', mod: '' }; }
+  const Fv = (ssb / (k - 1)) / (ssw / (N - k)), p = L.fsf(Fv, k - 1, N - k), eta = ssb / (ssb + ssw), sds = gs.map(([, v]) => L.sd(v)), vr = Math.max(...sds) / Math.min(...sds);
+  f.push(p < .05 ? fnd('ok', `La magnitud difiere entre grupos (F = ${F(Fv, 2)}; p = ${P(p)}).`) : fnd('info', `No hay evidencia de que la magnitud difiera entre grupos (p = ${P(p)}).`));
+  f.push(eta < .06 ? fnd('warn', `Tamaño del efecto pequeño (η² = ${F(eta, 3)}): ${p < .05 ? 'la diferencia es detectable pero poco relevante en la práctica' : 'consistente con diferencias nulas o muy pequeñas'}.`) : fnd('ok', `Tamaño del efecto ${eta < .14 ? 'mediano' : 'grande'} (η² = ${F(eta, 3)}).`));
+  f.push(vr > 2 ? fnd('warn', `Varianzas desiguales entre grupos (razón de desviaciones ${F(vr, 2)}): el ANOVA clásico es aproximado; confirme con una prueba robusta (Welch o Kruskal–Wallis).`) : fnd('ok', `Varianzas comparables entre grupos (razón ${F(vr, 2)}).`));
+  f.push(fnd('info', `Los grupos se formaron solo con ${(c.facts.km && c.facts.km.vars.join(', ')) || 'otras variables'}, sin usar «${c.target}»: el contraste no es circular.`));
+  c.facts.anova = { Fv, p, eta, k, vr };
+  return { f, in: `Columna «grupo» del paso anterior y «${c.target}»`, dec: `ANOVA de una vía con ${k} grupos`, out: 'Conclusión sobre diferencias entre grupos', html: tbl(['Grupo', 'n', 'Media', 'D.E.'], gs.map(([a, v]) => [a, v.length, L.mean(v), L.sd(v)]), { d: 3 }) + kpis([['F', Fv], ['p-valor', P(p)], ['η²', eta]]), mod: await modHTML('anova', c.text, { mode: 'one', f1: 'grupo', y: c.target }) };
+};
+STEPS.pca = async c => {
+  const f = [], vars = numCols(c.tb).map(x => x.name), nmx = numMatrix(c.tb, vars), pc = L.pca(nmx.X, true), p = vars.length, k2 = pc.cum[1] || pc.cum[0], kaiser = pc.values.filter(l => l > 1).length;
+  f.push(k2 >= .7 ? fnd('ok', `Los dos primeros componentes retienen el ${F(100 * k2, 1)} % de la variabilidad: el resumen bidimensional es fiel.`) : fnd('warn', `Los dos primeros componentes retienen solo el ${F(100 * k2, 1)} %: un resumen bidimensional pierde información.`));
+  f.push(fnd('info', `Criterio de Kaiser: ${kaiser} componente(s) con valor propio > 1.`));
+  const top = pc.vecs[0].map((v, i) => [vars[i], v]).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])), same = pc.vecs[0].every(v => Math.sign(v) === Math.sign(pc.vecs[0][0]));
+  f.push(same ? fnd('ok', 'El primer componente pondera todas las variables en el mismo sentido: es un factor general (p. ej., nivel de desarrollo).') : fnd('info', 'El primer componente contrasta variables entre sí; revise las cargas.'));
+  c.facts.pca = { cum2: k2, kaiser, top: top.slice(0, 3).map(t => t[0]), n: nmx.X.length };
+  return { f, in: `${p} variables numéricas estandarizadas (n = ${nmx.X.length})`, dec: `Se resumen en ${kaiser || 1} componente(s) relevantes; los grupos se buscarán con las mismas variables`, out: 'Variables y estructura de varianza', html: tbl(['Componente', 'Valor propio', '% varianza', '% acumulado'], pc.values.map((v, i) => ['CP' + (i + 1), v, F(100 * pc.ratio[i], 1) + ' %', F(100 * pc.cum[i], 1) + ' %']), { d: 3 }) + tbl(['Variable', 'Carga en CP1', 'Carga en CP2'], vars.map((v, i) => [esc(v), pc.vecs[0][i], pc.vecs[1] ? pc.vecs[1][i] : NaN]), { d: 3 }), mod: await modHTML('pca', c.text, { cols: vars, sc: true }) };
+};
+
+/* ---------- síntesis ---------- */
+const CONC = {
+  serie: c => { const a = c.facts.arima, u = c.facts.unit; if (!a) return ['No fue posible ajustar un modelo; no hay conclusión que sostener.']; const out = []; out.push(`La serie «${c.target}» ${u && u.d === 0 ? 'es estacionaria en nivel' : `no es estacionaria y requiere ${u ? u.d : c.d} diferenciación(es)`}; se modeló como ${a.label}${a.lb.p > .05 ? ' con residuos sin autocorrelación' : ', aunque persiste autocorrelación en los residuos'}.`); out.push(a.bt ? (a.bt.ratio < .9 ? `En la validación fuera de muestra el modelo supera a la predicción ingenua (cociente de errores ${F(a.bt.ratio, 2)}), por lo que el pronóstico aporta información real.` : `En la validación fuera de muestra el modelo no supera claramente a la predicción ingenua (cociente ${F(a.bt.ratio, 2)}): el pronóstico no debe presentarse como más informativo que repetir el último valor.`) : 'No pudo realizarse la validación fuera de muestra.'); out.push(`A ${a.h} períodos el pronóstico es ${F(a.last.f, 2)} con intervalo de 95 % entre ${F(a.last.lo, 2)} y ${F(a.last.hi, 2)}; el valor actual es ${F(a.y0, 2)}.`); return out; },
+  aire: c => { const m = c.facts.mlr, h = c.facts.het, o = c.facts.outl, a = c.facts.arima, out = []; if (!m) return ['No fue posible ajustar el modelo explicativo.']; out.push(`Con ${c.preds.join(', ')} el modelo explica ${F(100 * m.adj, 1)} % de la variabilidad de «${c.target}» (R² ajustado) con n = ${m.n}.`); if (h) out.push(h.robust ? (h.changed.length ? `Tras corregir por ${[h.het ? 'heterocedasticidad' : '', h.ac ? 'autocorrelación' : ''].filter(Boolean).join(' y ')}, solo ${h.kept.length ? h.kept.join(', ') : 'ninguna variable'} conserva significancia; ${h.changed.join(', ')} debe presentarse como no concluyente.` : `Se detectaron problemas de supuestos (${[h.het ? 'heterocedasticidad' : '', h.ac ? 'autocorrelación' : ''].filter(Boolean).join(' y ')}), pero con errores robustos las variables significativas se mantienen: la conclusión resiste.`) : 'Los supuestos de MCO se cumplen: la inferencia clásica es válida.'); if (o && o.n) out.push(o.flips.length || o.lost.length ? 'La conclusión es sensible a observaciones influyentes; debe acompañarse de esa salvedad.' : 'La conclusión no depende de observaciones atípicas.'); if (a) out.push(`Para pronóstico se usó ${a.label}: ${a.bt && a.bt.ratio < .9 ? 'supera a la predicción ingenua en validación fuera de muestra' : 'no supera con claridad a la predicción ingenua en validación fuera de muestra'}; a ${a.h} días el valor esperado es ${F(a.last.f, 2)} (95 %: ${F(a.last.lo, 2)} a ${F(a.last.hi, 2)}).`); return out; },
+  sismos: c => { const k = c.facts.km, a = c.facts.anova, out = []; if (!k) return ['No fue posible agrupar los eventos.']; out.push(`Los eventos se agrupan en ${k.k} zonas según ${k.vars.join(', ')} (silueta ${F(k.sil, 2)}${k.sil >= .5 ? ': separación clara' : k.sil >= .25 ? ': separación moderada' : ': separación débil'}).`); if (a) out.push(a.p < .05 ? `La magnitud ${a.eta < .06 ? 'difiere de forma estadísticamente detectable pero pequeña' : 'difiere de forma apreciable'} entre zonas (F = ${F(a.Fv, 2)}; p = ${P(a.p)}; η² = ${F(a.eta, 3)}).` : `No hay evidencia de que la magnitud difiera entre zonas (p = ${P(a.p)}).`); return out; },
+  paises: c => { const p = c.facts.pca, k = c.facts.km, out = []; if (!p || !k) return ['No fue posible completar la ruta.']; out.push(`Dos componentes resumen el ${F(100 * p.cum2, 1)} % de la variabilidad de ${p.n} países; las variables que más pesan en el primero son ${p.top.join(', ')}.`); out.push(`Con las mismas variables se identifican ${k.k} grupos de países (silueta ${F(k.sil, 2)}${k.sil >= .5 ? ': grupos nítidos' : k.sil >= .25 ? ': estructura moderada' : ': estructura débil'}), de tamaños ${k.sizes.join(', ')}.`); return out; }
+};
+function synth(c, res) {
+  const all = res.flatMap(r => r.f.map(x => ({ ...x, step: r.id }))), cnt = { ok: 0, warn: 0, bad: 0 }; all.forEach(x => { if (cnt[x.l] != null) cnt[x.l]++; });
+  const tot = cnt.ok + cnt.warn + cnt.bad, ratio = tot ? cnt.ok / tot : 0, lvl = cnt.bad > 0 || ratio < .5 ? ['bad', 'Bajo'] : ratio < .8 ? ['warn', 'Moderado'] : ['ok', 'Alto'];
+  const conc = CONC[c.route](c), limits = all.filter(x => x.l === 'warn' || x.l === 'bad');
+  const meta = c.meta || {}, flow = `<div class="rt-flow"><div class="rt-n src"><b>Fuente</b><span>${esc(meta.sintetico ? 'Muestra sintética' : (meta.fuente || 'Datos del usuario'))}</span></div>${res.map((r, i) => `<i aria-hidden="true">→</i><div class="rt-n ${worst(r.f)}"><b>${i + 1} · ${esc(SM[r.id][1])}</b><span>${esc(SM[r.id][0])}</span><em>${r.f.filter(x => x.l === 'ok').length} de ${r.f.filter(x => x.l !== 'info').length} verificaciones</em></div>`).join('')}<i aria-hidden="true">→</i><div class="rt-n end"><b>Conclusión</b><span>Respaldo ${lvl[1].toLowerCase()}</span></div></div>`;
+  let html = '';
+  if (meta.sintetico) html += `<div class="rt-banner warn"><strong>Datos sintéticos.</strong> Esta ejecución usa una muestra generada por el programa para demostrar el encadenamiento. Sus resultados no describen ningún fenómeno real y no deben citarse como evidencia.</div>`;
+  else if (meta.fuente) html += `<div class="rt-banner"><strong>Fuente:</strong> ${esc(meta.fuente)}${meta.url ? ` · <code>${esc(meta.url)}</code>` : ''} · consultada el ${esc(meta.fecha || '')}.${meta.nota ? ' ' + esc(meta.nota) : ''}${meta.manual ? ' Los datos fueron modificados o ingresados por el usuario después de la consulta.' : ''}</div>`;
+  html += H4('Secuencia de la ruta') + flow;
+  html += H4('Cadena de decisiones: qué recibe, qué decide y qué entrega cada paso') + ltbl(['#', 'Paso (módulo)', 'Recibe', 'Decisión tomada', 'Entrega al siguiente'], res.map((r, i) => [i + 1, `<b>${esc(SM[r.id][0])}</b><br><span class="mut">${esc(SM[r.id][1])}</span>`, esc(r.in), esc(r.dec), esc(r.out)]));
+  html += H4('Verificaciones cruzadas') + ltbl(['Paso', 'Verificación', 'Resultado'], all.filter(x => x.l !== 'info').map(x => [esc(SM[x.step][0]), esc(x.t), pill(x.l)]));
+  html += `<div class="interp"><strong>Conclusión integrada · respaldo ${lvl[1].toLowerCase()}</strong>${conc.map(t => `<p>${t}</p>`).join('')}<p class="small">${cnt.ok} de ${tot} verificaciones superadas${cnt.warn ? `, ${cnt.warn} advertencia(s)` : ''}${cnt.bad ? `, ${cnt.bad} no superada(s)` : ''}. Los resultados describen asociaciones en los datos analizados; no establecen causalidad.</p></div>`;
+  if (limits.length) html += H4('Qué no se puede afirmar') + `<ul class="rt-lim">${limits.map(x => `<li>${pill(x.l)} ${esc(x.t)}</li>`).join('')}</ul>`;
+  html += H4('Detalle de cada módulo') + res.map((r, i) => `<section class="rt-step"><h5><span class="n">${i + 1}</span>${esc(SM[r.id][0])} <small>${esc(SM[r.id][1])}</small></h5>${r.html || ''}<ul class="rt-find">${r.f.map(x => `<li>${pill(x.l)} ${esc(x.t)}</li>`).join('')}</ul>${r.mod ? `<details class="rt-full"><summary>Ver la salida completa del módulo «${esc(SM[r.id][0])}»</summary>${r.mod}</details>` : ''}</section>`).join('');
+  return html;
+}
+
+/* ---------- módulo ---------- */
+reg({
+  id: 'ruta', group: 'Rutas', ref: 'Integración', title: 'Rutas de análisis encadenadas con fuentes en línea', autorun: false,
+  lead: 'Conecta módulos en secuencia: cada paso recibe la tabla del anterior, toma una decisión verificable y entrega al siguiente, hasta una conclusión con su nivel de respaldo.',
+  review: `<p>Un módulo aislado entrega un cálculo; una <b>ruta</b> encadena varios para que cada resultado sea verificado por el siguiente. El flujo es: <b>fuente de datos → tabla activa → explorar → modelar → validar → conclusión</b>.</p>
+  <ul><li><b>Continuidad:</b> cada paso recibe la tabla (o los predictores, el orden de diferenciación o los grupos) del paso anterior. El paso de raíz unitaria decide <i>d</i> para SARIMA; la correlación elige los predictores de la regresión; K-medias agrega la columna «grupo» que usa el ANOVA.</li><li><b>Verificación cruzada:</b> los pasos de validación pueden <i>corregir</i> la conclusión anterior. Si los residuos de la regresión están autocorrelacionados, se recalcula la significancia con errores robustos Newey–West y se informa qué variables dejan de ser significativas. Si hay puntos influyentes (distancia de Cook &gt; 4/n), se reajusta sin ellos para ver si la conclusión depende de pocos datos.</li><li><b>Validación del pronóstico:</b> se reserva el final de la serie, se pronostica y se compara con repetir el último valor. Si el modelo no mejora esa referencia trivial, la ruta lo advierte.</li><li><b>Nivel de respaldo:</b> proporción de verificaciones superadas. Alto: 80 % o más y ninguna no superada; moderado: 50 % a 80 %; bajo: menos de 50 % o alguna no superada.</li><li><b>Fuentes en línea:</b> el navegador consulta directamente a la fuente. Los datos que usted pega o carga no salen del navegador, pero la consulta sí es una solicitud a un tercero. Si una fuente no permite consultas desde otras páginas (CORS), pegue o cargue el CSV descargado.</li></ul>
+  <p class="small">Los datos sintéticos sirven solo para probar el encadenamiento y quedan rotulados como tales en el informe.</p>`,
+  code: `# Python: la ruta "serie de tiempo" equivalente\nimport pandas as pd, requests\nfrom statsmodels.tsa.stattools import adfuller\nfrom statsmodels.tsa.statespace.sarimax import SARIMAX\ns = pd.DataFrame(requests.get("https://mindicador.cl/api/dolar/2025").json()["serie"])\ny = s.sort_values("fecha")["valor"].values\nd = 0 if adfuller(y, regression="c")[1] < .05 else 1\nm = SARIMAX(y[:-12], order=(1, d, 1)).fit()\nprint(m.get_forecast(12).summary_frame())  # comparar con y[-12:] y con el valor ingenuo`,
+  build() {
+    let META = null;
+    const rf = Form('rt-route', [{ k: 'route', t: 'sel', label: 'Ruta de análisis', opts: Object.entries(ROUTES).map(([k, r]) => [k, r.name]), val: 'serie' }, { k: 'src', t: 'sel', label: 'Fuente de datos', opts: [...Object.entries(SRC).map(([k, s]) => [k, s.name]), ['manual', 'Pegar o cargar un CSV propio']], val: 'mindicador' }]);
+    const pf = Form('rt-par', [{ k: 'data', t: 'data', label: 'Tabla activa (CSV con encabezado)', sample: '', rows: 8 }, { k: 'target', t: 'col', from: 'data', label: 'Variable objetivo', def: 'last' }, { k: 's', t: 'num', label: 'Período estacional (1 = ninguno; 7 = semanal en datos diarios)', val: 1, min: 1, max: 52, step: 1 }, { k: 'h', t: 'num', label: 'Horizonte de pronóstico (períodos)', val: 14, min: 1, max: 60, step: 1 }]);
+    $$('button', pf.el).filter(b => b.textContent === 'Restaurar ejemplo').forEach(b => b.remove());
+    const sf = {}, sbox = h('div', { class: 'rt-src' }); Object.entries(SRC).forEach(([k, s]) => { sf[k] = Form('rt-s-' + k, s.fields); sf[k].el.hidden = true; sbox.append(sf[k].el); });
+    const desc = h('p', { class: 'small', id: 'rt-desc' }), status = h('p', { class: 'small', role: 'status', id: 'rt-status' }), flow = h('p', { class: 'rt-prev small' });
+    const show = () => { const src = rf.els.src.value; Object.keys(sf).forEach(k => sf[k].el.hidden = k !== src); const r = ROUTES[rf.els.route.value]; desc.textContent = r.lead; flow.innerHTML = '<b>Secuencia:</b> ' + r.steps.map(id => SM[id][0]).join(' → ') + ' → conclusión.'; };
+    const setTarget = () => { const r = ROUTES[rf.els.route.value], names = [...pf.els.target.options].map(o => o.value); if (r.tgt && names.includes(r.tgt)) pf.els.target.value = r.tgt; else if (rf.els.route.value === 'serie' && names.length) pf.els.target.value = names[names.length - 1]; };
+    const setData = (r, meta) => { pf.els.data.value = r.csv; pf.refresh(); META = { ...meta, fecha: new Date().toLocaleString('es-CL') }; setTarget(); };
+    rf.els.route.addEventListener('change', () => { const r = ROUTES[rf.els.route.value]; rf.els.src.value = r.src; pf.els.s.value = r.s; show(); setTarget(); status.textContent = ''; });
+    rf.els.src.addEventListener('change', show);
+    pf.els.data.addEventListener('input', () => { META = { fuente: 'Datos ingresados o cargados por el usuario', manual: true, fecha: new Date().toLocaleString('es-CL') }; });
+    const load = async syn => {
+      const k = rf.els.src.value, S = SRC[k]; if (!S) { status.textContent = 'Pegue o cargue su CSV en la tabla activa.'; return; }
+      btnGet.disabled = btnSyn.disabled = true; status.className = 'small'; status.textContent = syn ? 'Generando muestra…' : 'Consultando la fuente…';
+      try { const r = syn ? { csv: S.syn(), fuente: 'Muestra sintética' } : await S.get(sf[k].get()); setData(r, { fuente: r.fuente, url: r.url, nota: r.nota, sintetico: !!syn }); const tb = L.parseTable(pf.els.data.value); status.textContent = `${syn ? 'Muestra sintética lista' : 'Datos obtenidos'}: ${tb.n} filas y ${tb.cols.length} columnas. Pulse «Calcular» para ejecutar la ruta.`; }
+      catch (e) { status.className = 'small bad'; status.textContent = `No se pudo obtener los datos: ${e.message}. Puede usar la muestra sintética para probar la ruta, o pegar un CSV descargado de la fuente.`; }
+      btnGet.disabled = btnSyn.disabled = false;
+    };
+    const btnGet = h('button', { type: 'button', class: 'btn', onclick: () => load(false) }, 'Obtener datos en línea'), btnSyn = h('button', { type: 'button', class: 'btn ghost', onclick: () => load(true) }, 'Usar muestra sintética (sin conexión)');
+    const el = h('div', { class: 'form' }, rf.el, h('div', { class: 'fld wide' }, desc, flow), sbox, h('div', { class: 'fld wide' }, h('div', { class: 'row' }, btnGet, btnSyn), status), pf.el);
+    const form = { el, els: { ...rf.els, ...pf.els }, refresh: pf.refresh, get: () => ({ ...rf.get(), ...pf.get() }) };
+    show();
+    return {
+      form, async run(out, v) {
+        if (!v.data.trim()) throw new Error('Cargue datos primero: use «Obtener datos en línea», la muestra sintética o pegue un CSV.');
+        const R = ROUTES[v.route], tb = L.parseTable(v.data); if (!colOf(tb, v.target) || !colOf(tb, v.target).num) throw new Error('La variable objetivo debe ser una columna numérica.');
+        const c = { route: v.route, tb, text: v.data, target: v.target, s: v.s, h: v.h, facts: {}, meta: META || { fuente: 'Datos ingresados por el usuario', manual: true, fecha: new Date().toLocaleString('es-CL') } }, res = [];
+        for (let i = 0; i < R.steps.length; i++) { const id = R.steps[i]; out.innerHTML = `<div class="empty">Paso ${i + 1} de ${R.steps.length}: ${esc(SM[id][0])}…</div>`; await new Promise(r => setTimeout(r, 20)); let r; try { r = await STEPS[id](c); } catch (e) { r = { f: [fnd('bad', `El paso falló: ${e.message || e}`)], in: '', dec: 'Paso interrumpido', out: '—', html: '', mod: '' }; } r.id = id; res.push(r); }
+        out.innerHTML = synth(c, res);
+      }
+    };
+  }
+});
+
 /* ===== Identidad del propietario, sonidos, efectos, temas de colores sólidos y panel de ajustes ===== */
 const PROFILE_DEF = { nombre: 'Luis Rubén Medina', cargo: 'Propietario del diseño y prototipo', org: '', contacto: '', producto: 'Laboratorio de Data Science', version: 'Prototipo 1.0', lema: 'Metodologías de datos listas para calcular, interpretar e informar.' };
 const PROFILE = Object.assign({}, PROFILE_DEF, store.get('lab-perfil-v1') || {});
@@ -2219,10 +2541,10 @@ function renderTiles() {
     box.append(t);
   });
   if (!list.length) box.append(h('div', { class: 'empty' }, 'Ningún módulo coincide con los filtros activos.'));
-  const tot = MODS.length, ran = MODS.filter(m => MOD_STATE[m.id] && !MOD_STATE[m.id].err).length, inRep = new Set(REPORT.sections.map(s => s.mod)).size, errs = MODS.filter(m => modStatus(m) === 'error').length;
-  const msArr = MODS.map(m => MOD_STATE[m.id]).filter(x => x && !x.err).map(x => x.ms), avg = msArr.length ? msArr.reduce((a, b) => a + b, 0) / msArr.length : 0;
+  const tot = CORE().length, ran = CORE().filter(m => MOD_STATE[m.id] && !MOD_STATE[m.id].err).length, inRep = new Set(REPORT.sections.map(s => s.mod)).size, errs = CORE().filter(m => modStatus(m) === 'error').length;
+  const msArr = CORE().map(m => MOD_STATE[m.id]).filter(x => x && !x.err).map(x => x.ms), avg = msArr.length ? msArr.reduce((a, b) => a + b, 0) / msArr.length : 0;
   setGauge('ran', ran / tot, ran, `de ${tot} módulos`); setGauge('rep', inRep / tot, inRep, `${REPORT.sections.length} secciones en el informe`);
-  setGauge('fam', GROUPS.filter(g => MODS.some(m => m.group === g && MOD_STATE[m.id] && !MOD_STATE[m.id].err)).length / GROUPS.length, GROUPS.filter(g => MODS.some(m => m.group === g && MOD_STATE[m.id] && !MOD_STATE[m.id].err)).length, `de ${GROUPS.length} familias`);
+  setGauge('fam', CGROUPS.filter(g => MODS.some(m => m.group === g && MOD_STATE[m.id] && !MOD_STATE[m.id].err)).length / CGROUPS.length, CGROUPS.filter(g => MODS.some(m => m.group === g && MOD_STATE[m.id] && !MOD_STATE[m.id].err)).length, `de ${CGROUPS.length} familias`);
   setGauge('ms', Math.min(1, avg / 2000), msArr.length ? Math.round(avg) + ' ms' : '—', msArr.length ? 'tiempo medio de cálculo' : 'sin cálculos aún');
   const cnt = $('#fcount'); if (cnt) cnt.textContent = `${list.length} de ${tot} módulos`;
   const er = $('#ferr'); if (er) { er.textContent = errs ? `${errs} con error` : 'Sin errores'; er.className = 'pill ' + (errs ? 'bad' : 'ok'); }
@@ -2370,7 +2692,7 @@ function buildHome() {
   <p class="lead">${esc(P_.lema)} Cada metodología es una calculadora que funciona con sus propios datos: resultados, gráficos, interpretación en lenguaje claro y un informe profesional que usted arma módulo a módulo.</p>
   <p class="byline"><span class="avatar" aria-hidden="true">${esc((P_.nombre || '?').split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase())}</span><span><b>${esc(P_.nombre)}</b><br><small>${esc(P_.cargo)}${P_.org ? ' · ' + esc(P_.org) : ''}</small></span></p>
   <div class="row"><a class="btn pri" href="#scada">Abrir panel SCADA</a><a class="btn" href="#desc">Empezar por estadística descriptiva</a><a class="btn" href="#informe">Ir al informe</a></div>
-  <div class="stats" id="homeStats"><div><b data-n="${MODS.length}">0</b><span>módulos de cálculo</span></div><div><b data-n="${TEMARIO.length}">0</b><span>temas cubiertos</span></div><div><b data-n="${GROUPS.length}">0</b><span>familias de métodos</span></div><div><b data-n="${REPORT.sections.length}">0</b><span>secciones en el informe</span></div></div></header>
+  <div class="stats" id="homeStats"><div><b data-n="${CORE().length}">0</b><span>módulos de cálculo</span></div><div><b data-n="${TEMARIO.length}">0</b><span>temas cubiertos</span></div><div><b data-n="${CGROUPS.length}">0</b><span>familias de métodos</span></div><div><b data-n="${REPORT.sections.length}">0</b><span>secciones en el informe</span></div></div></header>
   <div class="home-grid">
    <section class="panel"><h3>Cómo se usa</h3><ol class="steps"><li><b>Elija un módulo</b> en el menú o en el panel SCADA. Cada uno trae datos de ejemplo y una reseña metodológica con las fórmulas.</li><li><b>Pegue o cargue sus datos</b> (CSV) y ajuste los parámetros; pulse «Calcular».</li><li><b>Agregue al informe</b> los resultados que le sirvan. Edite títulos y comentarios.</li><li><b>Genere el informe</b> con portada, índice, resumen ejecutivo, conclusiones y anexo metodológico, y descárguelo como HTML.</li></ol>
    <p class="small">Los cálculos se ejecutan en su navegador; los datos que usted pega o carga no se envían a ningún servidor.</p></section>
