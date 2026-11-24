@@ -310,15 +310,6 @@ body{transition:background-color .35s,color .35s}
 .led.warn{background:var(--warn);box-shadow:0 0 8px var(--warn)}
 .led.alm{background:var(--bad);box-shadow:0 0 10px var(--bad);animation:blink .7s infinite}
 @keyframes blink{50%{opacity:.35}}
-.gauges{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 16px}
-.gauge{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 8px 10px;text-align:center;position:relative;transition:transform .2s,border-color .2s}
-.gauge:hover{transform:translateY(-3px);border-color:var(--ac)}
-.gauge svg{width:100%;max-width:150px;display:block;margin:0 auto -22px}
-.gbg{fill:none;stroke:var(--soft);stroke-width:9;stroke-linecap:round}
-.gfg{fill:none;stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1)}
-.gv{display:block;font:700 1.45rem/1.1 var(--mono);position:relative;font-variant-numeric:tabular-nums}
-.gl{display:block;font:600 .72rem var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin-top:3px}
-.gs{display:block;font-size:.72rem;color:var(--mut)}
 .filters{position:relative}
 .frow{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:flex-end;margin-bottom:12px}.frow:last-of-type{margin-bottom:0}
 .ctl{display:flex;flex-direction:column;gap:4px;min-width:0}.ctl.grow{flex:1 1 260px}
@@ -372,6 +363,19 @@ tr.lg-alm td:first-child{box-shadow:inset 3px 0 0 var(--bad)}tr.lg-warn td:first
 .lg{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--c5)}
 .lg.ejec{background:var(--good)}.lg.inf{background:var(--c1)}.lg.bad{background:var(--bad)}
 .lg.wr{width:22px;height:0;border-radius:0;border-top:3px dashed var(--good);background:none}.lg.rp{width:22px;height:0;border-radius:0;border-top:3px dashed var(--c4);background:none}
+
+/* ---------- Botones en relieve (3D) ---------- */
+.btn,.seg button,.chipf{--sh:color-mix(in srgb,var(--fg) 24%,var(--line));border:1px solid var(--sh);border-radius:8px;background:linear-gradient(180deg,color-mix(in srgb,#fff 16%,var(--panel)),var(--panel) 55%,color-mix(in srgb,var(--fg) 7%,var(--panel)));box-shadow:0 4px 0 var(--sh),0 7px 10px -4px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.35);transform:translateY(0);margin-bottom:4px}
+.btn.pri{--sh:color-mix(in srgb,var(--ac) 55%,#000);background:linear-gradient(180deg,color-mix(in srgb,#fff 24%,var(--ac)),var(--ac) 60%,color-mix(in srgb,#000 12%,var(--ac)));border-color:var(--sh)}
+.btn.ghost{background:linear-gradient(180deg,color-mix(in srgb,#fff 10%,var(--bg)),var(--bg))}
+.btn.on,.seg button.on,.chipf.on{--sh:color-mix(in srgb,var(--ac) 55%,#000);background:linear-gradient(180deg,color-mix(in srgb,#fff 22%,var(--ac)),var(--ac));color:var(--acfg);border-color:var(--sh)}
+.chipf.on{background:linear-gradient(180deg,color-mix(in srgb,#fff 14%,color-mix(in srgb,var(--g,var(--ac)) 22%,var(--panel))),color-mix(in srgb,var(--g,var(--ac)) 22%,var(--panel)));color:var(--fg);--sh:color-mix(in srgb,var(--g,var(--ac)) 70%,#000)}
+.seg{border:0;background:transparent;gap:6px;overflow:visible}
+.seg button{border-right:1px solid var(--sh)!important;padding:6px 12px}
+.btn:hover:not(:disabled),.seg button:hover,.chipf:hover{transform:translateY(-1px);box-shadow:0 5px 0 var(--sh),0 10px 14px -5px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.4)}
+.btn:active:not(:disabled),.seg button:active,.chipf:active{transform:translateY(4px);box-shadow:0 0 0 var(--sh),inset 0 2px 4px rgba(0,0,0,.25)}
+.btn:disabled{box-shadow:0 2px 0 var(--sh)}
+.btn.sm{margin-bottom:3px}
 
 </style>
 <header class="top"><button id="menuBtn" class="btn sm menu" type="button" aria-expanded="false" aria-controls="nav">Menú</button>
@@ -2558,15 +2562,6 @@ const SHORT = { desc: 'Estadística descriptiva', test: 'Tests e intervalos', co
 const RSHORT = { serie: 'Serie de tiempo', aire: 'Aire: regresión', episodio: 'Aire: episodios', sismos: 'Sismicidad', paises: 'Países' };
 const wrap2 = (t, n = 16) => { const w = t.split(' '), a = ['']; w.forEach(x => { if ((a[a.length - 1] + ' ' + x).trim().length > n && a[a.length - 1]) a.push(x); else a[a.length - 1] = (a[a.length - 1] + ' ' + x).trim(); }); return a.slice(0, 2); };
 
-/* ---- indicadores (medidores semicirculares) ---- */
-function gauge(id, label, color) {
-  return `<div class="gauge" data-g="${id}"><svg viewBox="0 0 100 62" aria-hidden="true"><path class="gbg" d="M10 54 A40 40 0 0 1 90 54"/><path class="gfg" d="M10 54 A40 40 0 0 1 90 54" style="stroke:var(--${color})" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/></svg><b class="gv">0</b><span class="gl">${label}</span><small class="gs"></small></div>`;
-}
-function setGauge(id, frac, big, sub) {
-  const g = $(`.gauge[data-g="${id}"]`); if (!g) return; const f = Math.max(0, Math.min(1, frac)); const gf = $('.gfg', g); gf.style.strokeDashoffset = String(100 - f * 100); gf.style.opacity = f > 0 ? 1 : 0; const gv = $('.gv', g); if (typeof big === 'number') countUp(gv, big, { ms: 700 }); else gv.textContent = big; $('.gs', g).textContent = sub || '';
-}
-
-
 function filteredIds() {
   const q = FIL.q.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   return new Set(MODS.filter(m => FIL.grupos.has(m.group) && (FIL.nivel === 'todos' || modLevel(m) === FIL.nivel) && (FIL.estado === 'todos' || modStatus(m) === FIL.estado) && (!q || (m.title + ' ' + m.group + ' ' + m.ref + ' ' + (SHORT[m.id] || '')).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(q))).map(m => m.id));
@@ -2628,10 +2623,11 @@ function diagram() {
 }
 function renderPanel() {
   const box = $('#diagram'); if (!box) return; box.innerHTML = diagram();
-  const R = ROUTES[FIL.ruta], note = $('#routeNote'); if (note) note.innerHTML = R ? `<b>${esc(R.name)}.</b> ${esc(R.lead)} <span class="mut">Secuencia: ${R.steps.map((id, k) => `${k + 1}. ${esc(SHORT[id] || id)}`).join(' → ')} → conclusión integrada.</span> <a href="#ruta">Ejecutar esta ruta</a>` : 'Seleccione una ruta para ver cómo se encadenan los módulos: cada bloque recibe la tabla del anterior y entrega un resultado verificado al siguiente.';
-  const tot = CORE().length, ran = CORE().filter(m => MOD_STATE[m.id] && !MOD_STATE[m.id].err).length, inRep = new Set(REPORT.sections.map(s => s.mod)).size, errs = CORE().filter(m => modStatus(m) === 'error').length;
-  const msArr = CORE().map(m => MOD_STATE[m.id]).filter(x => x && !x.err).map(x => x.ms), avg = msArr.length ? msArr.reduce((a, b) => a + b, 0) / msArr.length : 0, fam = CGROUPS.filter(g => MODS.some(m => m.group === g && MOD_STATE[m.id] && !MOD_STATE[m.id].err)).length;
-  setGauge('ran', ran / tot, ran, `de ${tot} módulos`); setGauge('rep', inRep / tot, inRep, `${REPORT.sections.length} secciones en el informe`); setGauge('fam', fam / CGROUPS.length, fam, `de ${CGROUPS.length} familias`); setGauge('ms', Math.min(1, avg / 2000), msArr.length ? Math.round(avg) + ' ms' : '—', msArr.length ? 'tiempo medio de cálculo' : 'sin cálculos aún');
+  const R = ROUTES[FIL.ruta], note = $('#routeNote'); if (note) {
+    note.innerHTML = R ? `<b>${esc(R.name)}.</b> ${esc(R.lead)} <span class="mut">Secuencia: ${R.steps.map((id, k) => `${k + 1}. ${esc(SHORT[id] || id)}`).join(' → ')} → conclusión integrada.</span>` : '<b>¿Qué es una ruta encadenada?</b> Es una secuencia de módulos donde cada uno recibe el resultado del anterior, toma una decisión verificable y entrega al siguiente, hasta una conclusión con su nivel de respaldo. Elija una ruta para verla resaltada en el diagrama.';
+    if (R) { const go = h('button', { type: 'button', class: 'btn pri sm', id: 'goRoute', onclick: () => { location.hash = '#ruta'; setTimeout(() => { const sel = $('#rt-route-route'); if (sel) { sel.value = FIL.ruta; sel.dispatchEvent(new Event('change')); } }, 80); } }, 'Ejecutar esta ruta'); note.append(' ', go); }
+  }
+  const errs = CORE().filter(m => modStatus(m) === 'error').length;
   const cnt = $('#fcount'); if (cnt) cnt.textContent = `${filteredIds().size} de ${MODS.length} bloques visibles`;
   const er = $('#ferr'); if (er) { er.textContent = errs ? `${errs} con error` : 'Sin errores'; er.className = 'pill ' + (errs ? 'bad' : 'ok'); }
   const lg = $('#elog'); if (lg) lg.innerHTML = EXEC_LOG.length ? `<table class="t"><thead><tr><th class="l">Hora</th><th class="l">Bloque</th><th class="l">Evento</th><th>Tiempo</th></tr></thead><tbody>${EXEC_LOG.slice(0, 12).map(r => { const m = r.id && modById(r.id); return `<tr class="${r.ok ? '' : 'lg-alm'}"><td class="l">${r.t}</td><td class="l">${m ? `<a href="#${m.id}">${esc(SHORT[m.id] || m.title)}</a>` : '—'}</td><td class="l">${r.ev}</td><td>${r.ms != null ? r.ms + ' ms' : '—'}</td></tr>`; }).join('')}</tbody></table>` : '<p class="small">Aún no se ha ejecutado ningún bloque. Abra uno, pulse «Calcular» o use «Ejecutar pendientes».</p>';
@@ -2643,7 +2639,6 @@ function buildPanel() {
   const el = $('#bloques'); el.innerHTML = '';
   const head = h('header', { class: 'mh scada-h' }, h('div', null, h('p', { class: 'eyebrow' }, 'Mapa del laboratorio'), h('h2', null, 'Panel Analizador en Bloques')), h('p', { class: 'lead' }, 'Diagrama de proceso del laboratorio: los datos entran por la izquierda, recorren los bloques de cada familia de métodos y llegan al informe. Un bloque se energiza cuando se ejecuta; elija una ruta para ver cómo se encadenan.'),
     h('div', { class: 'statusbar' }, h('span', { class: 'pill ok' }, h('i', { class: 'led ok' }), 'Analizador activo'), h('span', { class: 'pill', id: 'clock' }, '--:--:--'), h('span', { class: 'pill', id: 'ferr' }, ''), h('span', { class: 'pill' }, `${CORE().length} módulos de cálculo`)));
-  const gauges = h('section', { class: 'gauges', html: gauge('ran', 'Módulos ejecutados', 'c3') + gauge('rep', 'Módulos en el informe', 'c1') + gauge('fam', 'Familias activas', 'c2') + gauge('ms', 'Tiempo medio', 'c4') });
   const search = h('div', { class: 'ctl grow' }, h('label', { class: 'cl', for: 'fq' }, 'Buscar bloque'), h('input', { id: 'fq', type: 'text', placeholder: 'Nombre, familia o referencia…', oninput: e => { FIL.q = e.target.value; renderPanel(); } }));
   const chips = h('div', { class: 'ctl grow' }, h('span', { class: 'cl' }, 'Familias'), h('div', { class: 'chipsf', role: 'group', 'aria-label': 'Filtrar por familia' }, GROUPS.map(g => h('button', { type: 'button', class: 'chipf on', 'aria-pressed': true, style: `--g:var(--c${GCOL[g]})`, onclick: e => { const b = e.currentTarget, on = !FIL.grupos.has(g); on ? FIL.grupos.add(g) : FIL.grupos.delete(g); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); renderPanel(); } }, h('i'), g)), h('button', { type: 'button', class: 'chipf all', onclick: () => { const all = FIL.grupos.size === GROUPS.length; FIL.grupos = new Set(all ? [] : GROUPS); $$('.chipf:not(.all)', chips).forEach(b => { b.classList.toggle('on', !all); b.setAttribute('aria-pressed', !all); }); renderPanel(); } }, 'Todas / ninguna')));
   const reset = h('button', { class: 'btn sm ghost', type: 'button', onclick: () => { Object.assign(FIL, { q: '', nivel: 'todos', estado: 'todos', grupos: new Set(GROUPS), ruta: 'ninguna' }); buildPanel(); show('bloques'); } }, 'Restablecer filtros');
@@ -2658,7 +2653,7 @@ function buildPanel() {
   const legend = h('div', { class: 'legend', html: `<span><i class="lg pend"></i>Sin ejecutar</span><span><i class="lg ejec"></i>Ejecutado</span><span><i class="lg inf"></i>En informe</span><span><i class="lg bad"></i>Con error</span><span><i class="lg wr"></i>Línea energizada: el bloque anterior ya produjo resultados</span><span><i class="lg rp"></i>Ruta encadenada seleccionada</span>` });
   const dia = h('section', { class: 'panel diagram-panel' }, h('div', { class: 'ch' }, h('h3', null, 'Diagrama de proceso')), h('p', { class: 'small', id: 'routeNote' }), legend, h('div', { id: 'diagram', class: 'diagram' }), h('p', { class: 'small' }, 'Cada bloque abre su módulo. Dentro de una familia, las flechas indican el orden de estudio del programa; las rutas encadenadas pueden saltar entre familias.'));
   const log = h('section', { class: 'panel' }, h('div', { class: 'ch' }, h('h3', null, 'Registro de ejecución')), h('div', { id: 'elog', class: 'tw' }));
-  el.append(head, gauges, filters, dia, log); renderPanel();
+  el.append(head, filters, dia, log); renderPanel();
   if (!window.__clk) window.__clk = setInterval(() => { const c = $('#clock'); if (c && panelVisible()) c.textContent = stamp(); }, 1000);
 }
 
