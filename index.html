@@ -111,6 +111,25 @@ h3.pv{font:600 .95rem var(--sans);margin:22px 0 10px}
 }
 @media (max-width:520px){.brand span{font-size:.92rem}.kpi b{font-size:1.05rem}.panel{padding:14px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+/* ===== página de arquitectura ===== */
+.arqfig{margin:0 0 22px;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 0 var(--rl-hi,#fff) inset,0 8px 20px -16px #000}
+.arqsvg{width:100%;height:auto;display:block}
+.arqsvg .ah{font:700 11px var(--sans);letter-spacing:.1em;fill:var(--ac)}
+.arqsvg .al{stroke:var(--line);stroke-width:1}
+.arqsvg .ab rect{fill:var(--soft);stroke:var(--line);stroke-width:1.2}
+.arqsvg .ab2 rect{fill:color-mix(in srgb,var(--ac) 10%,var(--panel));stroke:var(--ac)}
+.arqsvg .abr rect{fill:color-mix(in srgb,var(--ac) 6%,var(--panel));stroke:var(--ac);stroke-dasharray:6 4}
+.arqsvg .at{font:600 13px var(--sans);fill:var(--fg)}
+.arqsvg .as{font:400 11px var(--sans);fill:var(--mut)}
+.arqsvg .aa{stroke:var(--mut);stroke-width:1.5}
+.asec{margin:0 0 24px}.asec h3{font:700 1.1rem var(--disp);margin:0 0 10px}
+.agrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.acard{padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.acard h4{margin:0 0 6px;font:700 .95rem var(--sans)}.acard p{margin:0;color:var(--mut);font-size:.9rem}
+.acode{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto;font:.82rem/1.5 ui-monospace,Menlo,Consolas,monospace;margin:0}
+.atw{overflow-x:auto}.alist{margin:0;padding-left:20px;color:var(--mut)}.alist li{margin:4px 0}
+.atw th{text-align:left}.atw td:nth-child(2){white-space:nowrap}
+.arqfig{overflow-x:auto}.arqsvg{min-width:760px}
 
 </style>
 <style id="repcss">
@@ -424,9 +443,9 @@ body.resizing{cursor:col-resize;user-select:none}
 </style>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><linearGradient id="rbG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:color-mix(in srgb,#fff 50%,var(--ac))"/><stop offset="1" style="stop-color:color-mix(in srgb,#000 28%,var(--ac))"/></linearGradient><symbol id="robot" viewBox="0 0 48 48"><line x1="24" y1="3.5" x2="24" y2="10" stroke="var(--ac)" stroke-width="2.2" stroke-linecap="round"/><circle cx="24" cy="4" r="2.7" fill="#ffb020" stroke="#8a5a00" stroke-width=".6"/><rect x="3.5" y="21" width="5" height="10" rx="2.4" fill="url(#rbG)" stroke="rgba(0,0,0,.35)" stroke-width=".7"/><rect x="39.5" y="21" width="5" height="10" rx="2.4" fill="url(#rbG)" stroke="rgba(0,0,0,.35)" stroke-width=".7"/><rect x="7.5" y="10" width="33" height="26" rx="8.5" fill="url(#rbG)" stroke="rgba(0,0,0,.4)" stroke-width=".9"/><rect x="8.6" y="11" width="30.8" height="8" rx="6.5" fill="#fff" opacity=".18"/><rect x="12" y="15" width="24" height="14" rx="5.5" fill="#0b1426" stroke="rgba(255,255,255,.25)" stroke-width=".6"/><circle cx="19" cy="22" r="3.3" fill="#5ef2c0"/><circle cx="29" cy="22" r="3.3" fill="#5ef2c0"/><circle cx="18" cy="21" r="1.1" fill="#fff" opacity=".85"/><circle cx="28" cy="21" r="1.1" fill="#fff" opacity=".85"/><path d="M18 32.6h12" stroke="#0b1426" stroke-width="2.1" stroke-linecap="round" stroke-dasharray="2.2 2.4"/><path d="M13 38.5h22l3.6 7.5H9.4z" fill="url(#rbG)" stroke="rgba(0,0,0,.4)" stroke-width=".9"/><polyline points="14.5,43.6 19,41.2 23,43 28,40.6 33.5,42.2" fill="none" stroke="#0b1426" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol></defs></svg><header class="top"><button id="menuBtn" class="btn sm menu" type="button" aria-expanded="false" aria-controls="nav">Menú</button>
 <a class="brand" href="#inicio"><svg class="robot" viewBox="0 0 48 48" aria-hidden="true"><use href="#robot"/></svg><span class="bt"><span id="brandName">Calculadora de Data Science con IA</span><small id="brandBy"></small></span></a>
-<span class="sp"></span><button id="sndBtn" class="btn sm ghost" type="button" aria-pressed="true">Sonido: sí</button><button id="themeBtn" class="btn sm ghost" type="button">Tema</button><button id="setBtn" class="btn sm" type="button" aria-haspopup="dialog">Ajustes</button><a class="btn sm" href="#informe">Informe</a></header>
+<span class="sp"></span><a id="arqBtn" class="btn sm ghost" href="#arq" title="Cómo está hecha la calculadora">Cómo está hecha</a><button id="sndBtn" class="btn sm ghost" type="button" aria-pressed="true">Sonido: sí</button><button id="themeBtn" class="btn sm ghost" type="button">Tema</button><button id="setBtn" class="btn sm" type="button" aria-haspopup="dialog">Ajustes</button><a class="btn sm" href="#informe">Informe</a></header>
 <div class="app"><nav id="nav" aria-label="Módulos"></nav>
-<main id="main"><div id="home" class="page" hidden></div><div id="informe" class="page" hidden></div><div id="bloques" class="page" hidden></div><div id="pages"></div></main></div>
+<main id="main"><div id="home" class="page" hidden></div><div id="informe" class="page" hidden></div><div id="bloques" class="page" hidden></div><div id="arq" class="page" hidden></div><div id="pages"></div></main></div>
 <footer id="siteFoot"></footer>
 <script>
 /* ===== Núcleo numérico ===== */
@@ -3265,7 +3284,7 @@ function renderPanel() {
 const seg = (id, label, opts, key, onset) => h('div', { class: 'ctl' }, h('span', { class: 'cl', id: `${id}-l` }, label), h('div', { class: 'seg', role: 'radiogroup', 'aria-labelledby': `${id}-l` }, opts.map(([v, t]) => h('button', { type: 'button', role: 'radio', 'aria-checked': FIL[key] === v, class: FIL[key] === v ? 'on' : '', onclick: e => { FIL[key] = v; $$('button', e.currentTarget.parentNode).forEach(b => { const on = b === e.currentTarget; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); }); (onset || renderPanel)(); } }, t))));
 function buildPanel() {
   const el = $('#bloques'); el.innerHTML = '';
-  const head = h('header', { class: 'mh scada-h' }, h('div', null, h('p', { class: 'eyebrow' }, 'Mapa del laboratorio'), h('h2', null, 'Panel Analizador en Bloques')), h('p', { class: 'lead' }, 'Diagrama de proceso del laboratorio: los datos entran por la izquierda, recorren los bloques de cada familia de métodos y llegan al informe. Un bloque se energiza cuando se ejecuta; elija una ruta para ver cómo se encadenan.'),
+  const head = h('header', { class: 'mh scada-h' }, h('div', null, h('p', { class: 'eyebrow' }, 'Mapa de la calculadora'), h('h2', null, 'Panel Analizador en Bloques')), h('p', { class: 'lead' }, 'Diagrama de proceso del laboratorio: los datos entran por la izquierda, recorren los bloques de cada familia de métodos y llegan al informe. Un bloque se energiza cuando se ejecuta; elija una ruta para ver cómo se encadenan.'),
     h('div', { class: 'statusbar' }, h('span', { class: 'pill ok' }, h('i', { class: 'led ok' }), 'Analizador activo'), h('span', { class: 'pill', id: 'clock' }, '--:--:--'), h('span', { class: 'pill', id: 'ferr' }, ''), h('span', { class: 'pill' }, `${CORE().length} módulos de cálculo`)));
   const search = h('div', { class: 'ctl grow' }, h('label', { class: 'cl', for: 'fq' }, 'Buscar bloque'), h('input', { id: 'fq', type: 'text', placeholder: 'Nombre, familia o referencia…', oninput: e => { FIL.q = e.target.value; renderPanel(); } }));
   const chips = h('div', { class: 'ctl grow' }, h('span', { class: 'cl' }, 'Familias'), h('div', { class: 'chipsf', role: 'group', 'aria-label': 'Filtrar por familia' }, GROUPS.map(g => h('button', { type: 'button', class: 'chipf on', 'aria-pressed': true, style: `--g:var(--c${GCOL[g]})`, onclick: e => { const b = e.currentTarget, on = !FIL.grupos.has(g); on ? FIL.grupos.add(g) : FIL.grupos.delete(g); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); renderPanel(); } }, h('i'), g)), h('button', { type: 'button', class: 'chipf all', onclick: () => { const all = FIL.grupos.size === GROUPS.length; FIL.grupos = new Set(all ? [] : GROUPS); $$('.chipf:not(.all)', chips).forEach(b => { b.classList.toggle('on', !all); b.setAttribute('aria-pressed', !all); }); renderPanel(); } }, 'Todas / ninguna')));
@@ -3283,6 +3302,71 @@ function buildPanel() {
   const log = h('section', { class: 'panel' }, h('div', { class: 'ch' }, h('h3', null, 'Registro de ejecución')), h('div', { id: 'elog', class: 'tw' }));
   el.append(head, filters, dia, log); renderPanel();
   if (!window.__clk) window.__clk = setInterval(() => { const c = $('#clock'); if (c && panelVisible()) c.textContent = stamp(); }, 1000);
+}
+
+/* ===== Página «Cómo está hecha»: arquitectura de la calculadora en diagrama de bloques ===== */
+function arqDiagram() {
+  const nm = CORE().length, nf = CGROUPS.length, nr = Object.keys(ROUTES).length;
+  const W = 972, H = 470, cw = 176, bh = 56, X = [14, 206, 398, 590, 782];
+  const heads = ['ENTRADAS', 'INTERFAZ', 'NÚCLEO DE CÁLCULO', 'SALIDAS', 'ENTREGABLE'];
+  const col = [
+    [['Muestra sintética', 'datos de ejemplo con semilla fija'], ['Tabla pegada o CSV', 'se procesa en el navegador'], ['Fuentes en línea', 'economía, clima, sismos']],
+    [['Navegación y panel', `${nf} familias · ${nm} módulos`], ['Formulario del módulo', 'campos y parámetros'], ['Ajustes y tema', 'identidad, color, sonido']],
+    [['Registro de módulos', 'reg({ id, form, run })'], ['Biblioteca numérica', 'estadística, álgebra, aleatorios'], ['Solucionadores', 'simplex, gradiente, Q-learning']],
+    [['Tablas e indicadores', 'cifras con unidades'], ['Gráficos en SVG', 'dibujados sin librerías'], ['Interpretación', 'texto generado desde las cifras']],
+    [['Informe', 'secciones acumuladas'], ['Descarga', 'archivo HTML autónomo'], ['Persistencia local', 'ajustes en el navegador']]
+  ];
+  const yb = [58, 150, 242], ry = 346;
+  let s = `<svg viewBox="0 0 ${W} ${H}" class="arqsvg" role="img" aria-label="Diagrama en bloques de la arquitectura: entradas, interfaz, núcleo de cálculo, salidas y entregable, con el motor de rutas que encadena módulos" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arqAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1 L9 5 L0 9z" fill="var(--mut)"/></marker></defs>`;
+  col.forEach((c, i) => {
+    s += `<text class="ah" x="${X[i] + cw / 2}" y="30" text-anchor="middle">${heads[i]}</text><line class="al" x1="${X[i]}" x2="${X[i] + cw}" y1="38" y2="38"/>`;
+    c.forEach((b, j) => { s += `<g class="ab ab${i}"><rect x="${X[i]}" y="${yb[j]}" width="${cw}" height="${bh}" rx="9"/><text class="at" x="${X[i] + cw / 2}" y="${yb[j] + 24}" text-anchor="middle">${esc(b[0])}</text><text class="as" x="${X[i] + cw / 2}" y="${yb[j] + 42}" text-anchor="middle">${esc(b[1].length > 34 ? b[1].slice(0, 33) + '…' : b[1])}</text></g>`; });
+  });
+  const arrow = (x1, y1, x2, y2) => `<line class="aa" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" marker-end="url(#arqAr)"/>`;
+  for (let i = 0; i < 4; i++) { const xa = X[i] + cw, xb = X[i + 1]; [0, 1, 2].forEach(j => { s += arrow(xa, yb[j] + bh / 2, xb - 2, yb[j] + bh / 2); }); }
+  /* motor de rutas */
+  s += `<g class="ab abr"><rect x="${X[1]}" y="${ry}" width="${X[3] + cw - X[1]}" height="64" rx="10"/><text class="at" x="${(X[1] + X[3] + cw) / 2}" y="${ry + 25}" text-anchor="middle">Motor de rutas · ${nr} rutas encadenadas</text><text class="as" x="${(X[1] + X[3] + cw) / 2}" y="${ry + 46}" text-anchor="middle">cada paso reutiliza un módulo del núcleo y entrega sus hallazgos al paso siguiente</text></g>`;
+  s += arrow(X[2] + cw / 2, ry, X[2] + cw / 2, yb[2] + bh + 3);
+  s += `<text class="as" x="${W / 2}" y="${H - 12}" text-anchor="middle">Todo el cálculo ocurre en el navegador: no hay servidor, base de datos ni librerías externas.</text>`;
+  return s + '</svg>';
+}
+function buildArq() {
+  const el = $('#arq'); el.innerHTML = '';
+  const nm = CORE().length, nl = Object.keys(ROUTES).length, lines = 'más de 3.000';
+  const card = (t, p) => h('div', { class: 'acard' }, h('h4', null, t), h('p', null, p));
+  const row = (a, b, c) => h('tr', null, h('td', null, h('code', null, a)), h('td', null, b), h('td', null, c));
+  const diag = h('figure', { class: 'arqfig' }); diag.innerHTML = arqDiagram();
+  el.append(
+    h('header', { class: 'mh' }, h('div', null, h('p', { class: 'eyebrow' }, 'Arquitectura'), h('h2', null, 'Cómo está hecha la calculadora')),
+      h('p', { class: 'lead' }, `Un único archivo HTML con ${lines} líneas de JavaScript propio. Cada método es un bloque con entradas, procesamiento y salidas, igual que en un diagrama de bloques de ingeniería.`)),
+    diag,
+    h('section', { class: 'asec' }, h('h3', null, 'Principios de diseño'),
+      h('div', { class: 'agrid' },
+        card('Autónoma y local', 'Los datos no salen del navegador. Solo las fuentes en línea opcionales hacen consultas externas, y se rotulan como tales.'),
+        card('Un bloque por método', `Cada uno de los ${nm} módulos se registra con la misma estructura, por lo que agregar uno nuevo no toca el resto.`),
+        card('Cifras antes que texto', 'La interpretación se genera a partir de los valores calculados, no se escribe aparte. Si la cifra cambia, el texto cambia.'),
+        card('Verificable', 'Los resultados se contrastan con soluciones analíticas, enumeración exhaustiva o Python, y cada módulo se ejecuta en pruebas automáticas.'))),
+    h('section', { class: 'asec' }, h('h3', null, 'Anatomía de un módulo'),
+      h('p', { class: 'hint' }, 'Todo módulo se declara con la misma interfaz. El formulario se dibuja solo a partir de la descripción de sus campos.'),
+      h('pre', { class: 'acode' }, `reg({\n  id: 'entera', group: 'Optimización', title: 'Programación entera…',\n  lead: 'texto de presentación', review: 'resumen del tema', code: 'equivalente en Python',\n  build() {\n    return {\n      form: [ /* campos: data, sel, check, num, text… */ ],\n      run(out, v) { /* calcula con L y escribe tablas, gráficos e interpretación en out */ }\n    };\n  }\n});`)),
+    h('section', { class: 'asec' }, h('h3', null, 'Capas del código'),
+      h('div', { class: 'atw' }, h('table', { class: 'tbl' },
+        h('thead', null, h('tr', null, h('th', null, 'Archivo'), h('th', null, 'Capa'), h('th', null, 'Contenido'))),
+        h('tbody', null,
+          row('lib.js', 'Cálculo base', 'estadística, álgebra lineal, generador aleatorio con semilla, lectura de tablas'),
+          row('ui.js', 'Componentes', 'formularios, tablas, indicadores, gráficos SVG, registro de módulos, informe'),
+          row('m1–m4, m6', 'Métodos', 'estadística, modelos, series de tiempo, aprendizaje automático, datos y nube'),
+          row('m7.js', 'Optimización avanzada', 'gradiente, programación entera, estocástica con Monte Carlo, refuerzo'),
+          row('m5.js', 'Rutas', `motor que encadena módulos (${nl} rutas) y redacta conclusiones`),
+          row('fx.js', 'Apariencia', 'temas, sonido, ajustes, identidad del prototipo'),
+          row('bloques.js, main.js', 'Aplicación', 'panel en bloques, navegación, inicio y temario')))),
+    ),
+    h('section', { class: 'asec' }, h('h3', null, 'Límites que conviene conocer'),
+      h('ul', { class: 'alist' },
+        h('li', null, 'Es un prototipo docente: los métodos son implementaciones propias, adecuadas para aprender y explorar, no un reemplazo de paquetes especializados.'),
+        h('li', null, 'Las fuentes en línea dependen de la disponibilidad de los servicios externos; sin conexión se usan datos sintéticos.'),
+        h('li', null, 'El tamaño de los datos está acotado por la memoria del navegador.'))),
+  );
 }
 
 /* ===== Aplicación: navegación, inicio e informe ===== */
@@ -3315,12 +3399,12 @@ function ensureMounted(id) {
 }
 function show(id) {
   current = id; $$('.page').forEach(p => p.hidden = true);
-  $('#home').hidden = id !== 'inicio'; $('#informe').hidden = id !== 'informe'; $('#bloques').hidden = id !== 'bloques';
-  if (id === 'inicio' || id === 'bloques') { if (id === 'bloques') renderPanel(); } else if (id === 'informe') { renderReportList(); renderPreview(); } else if (modById(id)) { const pg = ensureMounted(id); pg.el.hidden = false; }
+  $('#home').hidden = id !== 'inicio'; $('#informe').hidden = id !== 'informe'; $('#bloques').hidden = id !== 'bloques'; $('#arq').hidden = id !== 'arq';
+  if (id === 'inicio' || id === 'bloques' || id === 'arq') { if (id === 'bloques') renderPanel(); if (id === 'arq') buildArq(); } else if (id === 'informe') { renderReportList(); renderPreview(); } else if (modById(id)) { const pg = ensureMounted(id); pg.el.hidden = false; }
   $$('#nav a').forEach(a => { const on = a.dataset.id === id; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
-  $('#nav').classList.remove('open'); window.scrollTo(0, 0); const t = modById(id)?.title || (id === 'informe' ? 'Informe' : id === 'bloques' ? 'Panel Analizador en Bloques' : 'Inicio'); document.title = `${t} · ${PROFILE.producto}`;
+  $('#nav').classList.remove('open'); window.scrollTo(0, 0); const t = modById(id)?.title || (id === 'informe' ? 'Informe' : id === 'bloques' ? 'Panel Analizador en Bloques' : id === 'arq' ? 'Cómo está hecha' : 'Inicio'); document.title = `${t} · ${PROFILE.producto}`;
 }
-function route() { let id = (location.hash || '#inicio').slice(1); if (id === 'scada') { id = 'bloques'; history.replaceState(null, '', '#bloques'); } show(id === 'inicio' || id === 'informe' || id === 'bloques' || modById(id) ? id : 'inicio'); }
+function route() { let id = (location.hash || '#inicio').slice(1); if (id === 'scada') { id = 'bloques'; history.replaceState(null, '', '#bloques'); } show(id === 'inicio' || id === 'informe' || id === 'bloques' || id === 'arq' || modById(id) ? id : 'inicio'); }
 
 /* ---------- inicio ---------- */
 function buildHome() {
