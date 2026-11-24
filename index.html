@@ -3421,7 +3421,7 @@ function arqFuentes() {
     h('p', { class: 'hint' }, 'Cada fila indica la bibliografía que fundamenta el método y la función de referencia con que puede contrastarse. El código Python equivalente está en la pestaña de cada módulo, de modo que cualquier cifra se puede reproducir fuera de la calculadora.'));
   CGROUPS.forEach(g => {
     const ms = CORE().filter(m => m.group === g); if (!ms.length) return;
-    const body = ms.map(m => { const f = FUENTES[m.id] || ['—', '—']; return h('tr', null, h('td', null, h('b', null, m.title), h('br'), h('small', { class: 'mut' }, m.ref)), h('td', null, h('ul', { class: 'fl' }, ...f[0].split('; ').map(x => h('li', null, x)))), h('td', null, f[1])); });
+    const body = ms.map(m => { const f = FUENTES[m.id] || ['—', '—']; return h('tr', null, h('td', null, h('b', null, m.title)), h('td', null, h('ul', { class: 'fl' }, ...f[0].split('; ').map(x => h('li', null, x)))), h('td', null, f[1])); });
     sec.append(h('h4', { class: 'fg' }, g), h('div', { class: 'atw' }, h('table', { class: 'tbl ft' }, h('thead', null, h('tr', null, h('th', null, 'Módulo'), h('th', null, 'Fuentes del método'), h('th', null, 'Referencia de implementación'))), h('tbody', null, ...body))));
   });
   sec.append(h('div', { class: 'acard avf' }, h('h4', null, 'Cómo verificar un resultado'),
