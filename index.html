@@ -207,6 +207,12 @@ pre.json{font:12px/1.5 var(--mono);background:var(--soft);border:1px solid var(-
 .mut{color:var(--mut)}
 .rt-src{display:contents}
 
+.gridmap{width:100%;max-width:640px;height:auto;display:block;margin:0 auto}
+.gm-f{fill:var(--panel);stroke:var(--line)}.gm-w{fill:var(--fg);stroke:var(--line)}.gm-c{fill:color-mix(in srgb,var(--warn) 35%,var(--panel));stroke:var(--line)}
+.gm-e{fill:color-mix(in srgb,var(--good) 25%,var(--panel));stroke:var(--line)}.gm-ce{fill:color-mix(in srgb,var(--good) 35%,color-mix(in srgb,var(--warn) 35%,var(--panel)));stroke:var(--line)}
+.gm-p{fill:var(--c1);stroke:var(--line)}.gm-t{font:700 13px var(--mono);fill:#fff;paint-order:stroke;stroke:#000;stroke-width:2px}
+table.qb{border-collapse:collapse;margin:6px auto}table.qb td{width:34px;height:34px;text-align:center;font-size:1.3rem;padding:0;border:1px solid var(--line)}table.qb td.dk{background:var(--soft)}
+
 </style>
 <style id="fxcss">
 /* Temas de colores sólidos (se aplican por data-theme); acento y paleta de gráficos se ajustan desde JS. */
@@ -1072,7 +1078,7 @@ function loadReport() { const r = store.get('lab-informe-v1'); if (r && r.sectio
 
 /* ---------- registro de módulos y montaje ---------- */
 const MODS = []; const reg = m => MODS.push(m);
-const CGROUPS = ['Fundamentos', 'Modelos lineales', 'Cómputo intensivo', 'Series de tiempo', 'Datos: SQL y Spark', 'Aprendizaje automático', 'IA y nube'];
+const CGROUPS = ['Fundamentos', 'Modelos lineales', 'Cómputo intensivo', 'Series de tiempo', 'Optimización', 'Datos: SQL y Spark', 'Aprendizaje automático', 'IA y nube'];
 const GROUPS = [...CGROUPS, 'Rutas'];
 const CORE = () => MODS.filter(m => m.group !== 'Rutas');
 function mountModule(m, host) {
@@ -2066,6 +2072,258 @@ reg({
   }
 });
 
+/* ===== OPTIMIZACIÓN (folleto de IA, módulo 3): metaheurísticas, restricciones y búsqueda ===== */
+
+/* ---------- programación lineal (método simplex con penalización Big-M) ---------- */
+function lpSolve(c0, rows, sense = 'max') {
+  const n = c0.length, c = sense === 'min' ? c0.map(v => -v) : c0.slice(), m = rows.length;
+  const R = rows.map(r => { let a = r.a.slice(), b = r.b, t = r.t; if (b < 0) { a = a.map(v => -v); b = -b; t = t === '<=' ? '>=' : t === '>=' ? '<=' : '='; } return { a, b, t }; });
+  const nS = R.filter(r => r.t !== '=').length, nA = R.filter(r => r.t !== '<=').length, N = n + nS + nA, M = 1e6 * Math.max(1, ...c.map(Math.abs));
+  const T = R.map(() => new Array(N + 1).fill(0)), cost = new Array(N).fill(0), basis = []; c.forEach((v, j) => cost[j] = v);
+  let si = n, ai = n + nS;
+  R.forEach((r, i) => { r.a.forEach((v, j) => T[i][j] = v); T[i][N] = r.b; if (r.t === '<=') { T[i][si] = 1; basis[i] = si; si++; } else if (r.t === '>=') { T[i][si] = -1; si++; T[i][ai] = 1; cost[ai] = -M; basis[i] = ai; ai++; } else { T[i][ai] = 1; cost[ai] = -M; basis[i] = ai; ai++; } });
+  let done = false;
+  for (let it = 0; it < 6000; it++) {
+    let enter = -1, best = 1e-9;
+    for (let j = 0; j < N; j++) { let z = 0; for (let i = 0; i < m; i++) z += cost[basis[i]] * T[i][j]; const rc = cost[j] - z; if (rc > best) { best = rc; enter = j; if (it > 1500) break; } }
+    if (enter < 0) { done = true; break; }
+    let leave = -1, minr = Infinity;
+    for (let i = 0; i < m; i++) if (T[i][enter] > 1e-9) { const r = T[i][N] / T[i][enter]; if (r < minr - 1e-12) { minr = r; leave = i; } }
+    if (leave < 0) return { status: 'unbounded' };
+    const pv = T[leave][enter]; for (let j = 0; j <= N; j++) T[leave][j] /= pv;
+    for (let i = 0; i < m; i++) if (i !== leave) { const f = T[i][enter]; if (f) for (let j = 0; j <= N; j++) T[i][j] -= f * T[leave][j]; }
+    basis[leave] = enter;
+  }
+  if (!done) return { status: 'iterlimit' };
+  if (basis.some((bj, i) => bj >= n + nS && T[i][N] > 1e-6)) return { status: 'infeasible' };
+  const x = new Array(n).fill(0); basis.forEach((bj, i) => { if (bj < n) x[bj] = Math.max(0, T[i][N]); });
+  return { status: 'optimal', x, obj: c0.reduce((s, v, j) => s + v * x[j], 0) };
+}
+const LPST = { optimal: 'Óptimo encontrado', infeasible: 'Sin solución factible', unbounded: 'Problema no acotado', iterlimit: 'No convergió' };
+const lpShadow = (c, rows, sense, i, base) => { const d = Math.max(1e-4, 1e-4 * Math.abs(rows[i].b)), r2_ = rows.map((r, k) => k === i ? { ...r, b: r.b + d } : r), s = lpSolve(c, r2_, sense); return s.status === 'optimal' ? (s.obj - base) / d : NaN; };
+function clipPoly(poly, a, b, t) { const out = [], inside = p => t === '<=' ? a[0] * p[0] + a[1] * p[1] <= b + 1e-9 : a[0] * p[0] + a[1] * p[1] >= b - 1e-9, f = p => a[0] * p[0] + a[1] * p[1] - b; for (let i = 0; i < poly.length; i++) { const p = poly[i], q = poly[(i + 1) % poly.length], ip = inside(p), iq = inside(q); if (ip) out.push(p); if (ip !== iq) { const fp = f(p), fq = f(q), u = fp / (fp - fq); out.push([p[0] + u * (q[0] - p[0]), p[1] + u * (q[1] - p[1])]); } } return out; }
+function parseLP(v) {
+  const cvec = v.cvec.split(',').map(num); if (cvec.some(x => !isFinite(x))) throw new Error('El vector de la función objetivo debe tener números separados por comas.');
+  const rows = v.cons.split('\n').map(l => l.trim()).filter(Boolean).map((l, k) => { const p = l.split(';').map(s => s.trim()); if (p.length < 3) throw new Error(`Restricción ${k + 1}: use el formato «coeficientes; <=; límite».`); const a = p[0].split(',').map(num); if (a.length !== cvec.length || a.some(x => !isFinite(x))) throw new Error(`Restricción ${k + 1}: debe tener ${cvec.length} coeficientes.`); if (!['<=', '>=', '='].includes(p[1])) throw new Error(`Restricción ${k + 1}: el operador debe ser <=, >= o =.`); const b = num(p[2]); if (!isFinite(b)) throw new Error(`Restricción ${k + 1}: límite no numérico.`); return { a, t: p[1], b, name: p[3] || `R${k + 1}` }; });
+  if (!rows.length) throw new Error('Ingrese al menos una restricción.');
+  const names = v.vnames.split(',').map(s => s.trim()).filter(Boolean); return { c: cvec, rows, names: names.length === cvec.length ? names : cvec.map((_, j) => `x${j + 1}`), sense: v.obj };
+}
+
+/* ---------- satisfacción de restricciones ---------- */
+function cspSolve(nv, dom, conflict, nbr, smart, countAll, limit = 1500000) {
+  let nodes = 0, count = 0, sol = null, abort = false; const asg = new Array(nv).fill(-1);
+  const rec = doms => {
+    if (abort) return; nodes++; if (nodes > limit) { abort = true; return; }
+    let v = -1, bs = Infinity; for (let i = 0; i < nv; i++) if (asg[i] < 0) { const s = smart ? doms[i].length * 1000 - nbr[i].length : i; if (s < bs) { bs = s; v = i; } if (!smart) break; }
+    if (v < 0) { count++; if (!sol) sol = asg.slice(); return; }
+    for (const a of doms[v]) {
+      let ok = true; if (!smart) { for (const k of nbr[v]) if (asg[k] >= 0 && conflict(v, k, a, asg[k])) { ok = false; break; } if (!ok) continue; asg[v] = a; rec(doms); asg[v] = -1; }
+      else { const nd = doms.map((d, k) => asg[k] < 0 && k !== v && nbr[v].includes(k) ? d.filter(b => !conflict(v, k, a, b)) : d); if (nd.some((d, k) => asg[k] < 0 && k !== v && d.length === 0)) continue; asg[v] = a; rec(nd); asg[v] = -1; }
+      if (sol && !countAll) return; if (abort) return;
+    }
+  };
+  rec(dom.map(d => d.slice())); return { sol, nodes, count, abort };
+}
+const QKNOWN = [1, 1, 0, 0, 2, 10, 4, 40, 92, 352, 724];
+
+/* ---------- búsqueda en cuadrícula ---------- */
+class Heap { constructor() { this.a = []; } push(k, v) { const a = this.a; a.push([k, v]); let i = a.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (a[p][0] <= a[i][0]) break;[a[p], a[i]] = [a[i], a[p]]; i = p; } } pop() { const a = this.a, t = a[0], l = a.pop(); if (a.length) { a[0] = l; let i = 0; for (; ;) { let m = i; const x = 2 * i + 1, y = x + 1; if (x < a.length && a[x][0] < a[m][0]) m = x; if (y < a.length && a[y][0] < a[m][0]) m = y; if (m === i) break;[a[m], a[i]] = [a[i], a[m]]; i = m; } } return t; } get size() { return this.a.length; } }
+function parseGrid(txt) {
+  const L_ = txt.split('\n').map(s => s.replace(/\s+$/, '')).filter(s => s.length), H = L_.length, W = Math.max(...L_.map(s => s.length)); let S = null, G = null; const cell = [];
+  for (let y = 0; y < H; y++) { cell.push([]); for (let x = 0; x < W; x++) { const ch = L_[y][x] || '#'; if (ch === 'S') S = [x, y]; if (ch === 'G') G = [x, y]; cell[y].push(ch === '#' ? 0 : ch === '~' ? 3 : 1); } }
+  if (!S || !G) throw new Error('El mapa debe tener una «S» (inicio) y una «G» (meta).'); return { H, W, cell, S, G };
+}
+function gridSearch(g, algo, hname, wgt, diag) {
+  const { H, W, cell, S, G } = g, id = (x, y) => y * W + x, moves = diag ? [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]] : [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const hf = (x, y) => { const dx = Math.abs(x - G[0]), dy = Math.abs(y - G[1]); return hname === 'zero' ? 0 : hname === 'manhattan' ? dx + dy : hname === 'euclid' ? Math.hypot(dx, dy) : Math.max(dx, dy) + (Math.SQRT2 - 1) * Math.min(dx, dy); };
+  const step = (x, y, m) => { const nx = x + m[0], ny = y + m[1]; if (nx < 0 || ny < 0 || nx >= W || ny >= H || !cell[ny][nx]) return null; if (m[0] && m[1] && (!cell[y][x + m[0]] || !cell[y + m[1]][x])) return null; const d = m[0] && m[1] ? Math.SQRT2 : 1; return { nx, ny, c: algo === 'bfs' ? 1 : cell[ny][nx] * d }; };
+  const gs = new Array(W * H).fill(Infinity), par = new Array(W * H).fill(-1), closed = new Uint8Array(W * H), open = new Heap(); let expanded = 0, found = false;
+  gs[id(...S)] = 0; open.push(0, id(...S)); const order = [];
+  while (open.size) {
+    const [, u] = open.pop(); if (closed[u]) continue; closed[u] = 1; expanded++; order.push(u); const ux = u % W, uy = (u / W) | 0; if (ux === G[0] && uy === G[1]) { found = true; break; }
+    for (const m of moves) { const s = step(ux, uy, m); if (!s) continue; const v = id(s.nx, s.ny), ng = gs[u] + s.c; if (ng < gs[v] - 1e-12) { gs[v] = ng; par[v] = u; const key = algo === 'greedy' ? hf(s.nx, s.ny) : algo === 'astar' ? ng + wgt * hf(s.nx, s.ny) : ng; open.push(key, v); } }
+  }
+  const path = []; if (found) for (let u = id(...G); u >= 0; u = par[u]) path.push([u % W, (u / W) | 0]); path.reverse();
+  let realCost = 0; for (let i = 1; i < path.length; i++) { const dx = path[i][0] - path[i - 1][0], dy = path[i][1] - path[i - 1][1]; realCost += cell[path[i][1]][path[i][0]] * (dx && dy ? Math.SQRT2 : 1); }
+  return { found, path, cost: realCost, steps: Math.max(0, path.length - 1), expanded, order };
+}
+function hStar(g, diag) { /* costo mínimo real desde cada celda hasta la meta (Dijkstra inverso) */
+  const { H, W, cell, G } = g, id = (x, y) => y * W + x, mv = diag ? [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]] : [[1, 0], [-1, 0], [0, 1], [0, -1]], d = new Array(W * H).fill(Infinity), q = new Heap(); d[id(...G)] = 0; q.push(0, id(...G));
+  while (q.size) { const [k, v] = q.pop(); if (k > d[v] + 1e-12) continue; const vx = v % W, vy = (v / W) | 0; for (const m of mv) { const ux = vx + m[0], uy = vy + m[1]; if (ux < 0 || uy < 0 || ux >= W || uy >= H || !cell[uy][ux]) continue; if (m[0] && m[1] && (!cell[vy][ux] || !cell[uy][vx])) continue; const c = cell[vy][vx] * (m[0] && m[1] ? Math.SQRT2 : 1), nd = d[v] + c; if (nd < d[id(ux, uy)] - 1e-12) { d[id(ux, uy)] = nd; q.push(nd, id(ux, uy)); } } }
+  return d;
+}
+
+/* ---------- metaheurísticas ---------- */
+function knapProb(v, w, cap) {
+  const n = v.length, Wt = s => { let t = 0; for (let i = 0; i < n; i++) if (s[i]) t += w[i]; return t; };
+  const repair = (s, rnd, keep) => { let t = Wt(s); if (t <= cap) return s; const on = []; for (let i = 0; i < n; i++) if (s[i] && i !== keep) on.push(i); for (const i of L.shuffle(on, rnd)) { if (t <= cap) break; s[i] = 0; t -= w[i]; } if (t > cap && keep >= 0) s[keep] = 0; return s; };
+  return {
+    kind: 'knap', n, stall: Math.max(60, n * 4),
+    random: rnd => { const s = new Array(n).fill(0); let t = 0; for (const i of L.shuffle([...Array(n).keys()], rnd)) if (t + w[i] <= cap) { s[i] = 1; t += w[i]; } return s; },
+    cost: s => { let t = 0; for (let i = 0; i < n; i++) if (s[i]) t += v[i]; return -t; },
+    neighbor: (s, rnd) => { const c = s.slice(), i = Math.floor(rnd() * n); c[i] ^= 1; return c[i] ? repair(c, rnd, i) : c; },
+    cross: (a, b, rnd) => repair(a.map((x, i) => rnd() < .5 ? x : b[i]), rnd, -1),
+    show: c => -c, sign: -1
+  };
+}
+function tspProb(xy) {
+  const n = xy.length, D = xy.map(a => xy.map(b => Math.hypot(a[0] - b[0], a[1] - b[1])));
+  return {
+    kind: 'tsp', n, D, stall: Math.max(80, n * 8),
+    random: rnd => L.shuffle([...Array(n).keys()], rnd),
+    cost: t => { let s = 0; for (let i = 0; i < n; i++) s += D[t[i]][t[(i + 1) % n]]; return s; },
+    neighbor: (t, rnd) => { let i = Math.floor(rnd() * n), j = Math.floor(rnd() * n); if (i === j) j = (j + 1) % n; if (i > j) [i, j] = [j, i]; const c = t.slice(); for (let a = i, b = j; a < b; a++, b--)[c[a], c[b]] = [c[b], c[a]]; return c; },
+    cross: (p1, p2, rnd) => { let a = Math.floor(rnd() * n), b = Math.floor(rnd() * n); if (a > b) [a, b] = [b, a]; const ch = new Array(n).fill(-1), used = new Set(); for (let i = a; i <= b; i++) { ch[i] = p1[i]; used.add(p1[i]); } let k = (b + 1) % n; for (let i = 0; i < n; i++) { const g = p2[(b + 1 + i) % n]; if (!used.has(g)) { ch[k] = g; k = (k + 1) % n; } } return ch; },
+    show: c => c, sign: 1
+  };
+}
+function runMeta(P, algo, B, rnd) {
+  const K = 60, curve = new Array(K + 1).fill(Infinity); let evals = 0, best = Infinity, bestS = null;
+  const ev = s => { const c = P.cost(s); evals++; if (c < best) { best = c; bestS = s; } const k = Math.min(K, Math.floor((evals - 1) * K / B)); if (best < curve[k]) curve[k] = best; return c; };
+  if (algo === 'hc') {
+    let cur = P.random(rnd), cc = ev(cur), stall = 0;
+    while (evals < B) { const nb = P.neighbor(cur, rnd), c = ev(nb); if (c <= cc) { stall = c < cc ? 0 : stall + 1; cur = nb; cc = c; } else stall++; if (stall > P.stall && evals < B) { cur = P.random(rnd); cc = ev(cur); stall = 0; } }
+  } else if (algo === 'sa') {
+    let cur = P.random(rnd), cc = ev(cur); const ds = []; for (let i = 0; i < 40 && evals < B / 4; i++) ds.push(Math.abs(ev(P.neighbor(cur, rnd)) - cc));
+    const d0 = (L.mean(ds) || 1), T0 = d0, T1 = d0 * 1e-3, steps = B - evals;
+    for (let k = 0; k < steps; k++) { const T = T0 * Math.pow(T1 / T0, k / steps), nb = P.neighbor(cur, rnd), c = ev(nb); if (c <= cc || rnd() < Math.exp(-(c - cc) / T)) { cur = nb; cc = c; } }
+  } else {
+    const N = Math.max(10, Math.min(40, Math.floor(B / 20))); let pop = []; for (let i = 0; i < N && evals < B; i++) { const s = P.random(rnd); pop.push({ s, c: ev(s) }); }
+    const tour = () => { let b = null; for (let i = 0; i < 3; i++) { const x = pop[Math.floor(rnd() * pop.length)]; if (!b || x.c < b.c) b = x; } return b; };
+    while (evals < B) { pop.sort((a, b) => a.c - b.c); const next = pop.slice(0, 2); while (next.length < N && evals < B) { let ch = rnd() < .9 ? P.cross(tour().s, tour().s, rnd) : tour().s.slice(); if (rnd() < .3) ch = P.neighbor(ch, rnd); next.push({ s: ch, c: ev(ch) }); } pop = next; }
+  }
+  for (let k = 0; k <= K; k++) if (curve[k] === Infinity) curve[k] = k ? curve[k - 1] : best; for (let k = 1; k <= K; k++) curve[k] = Math.min(curve[k], curve[k - 1]);
+  return { best, sol: bestS, curve };
+}
+function knapExact(v, w, cap) { if (w.some(x => !Number.isInteger(x)) || !Number.isInteger(cap) || cap > 400000) return null; const dp = new Float64Array(cap + 1); for (let i = 0; i < v.length; i++) for (let c = cap; c >= w[i]; c--) dp[c] = Math.max(dp[c], dp[c - w[i]] + v[i]); return dp[cap]; }
+function tspExact(D) { const n = D.length; if (n > 16) return null; const m = n - 1, FULL = 1 << m, dp = Array.from({ length: FULL }, () => new Float64Array(m).fill(Infinity)); for (let j = 0; j < m; j++) dp[1 << j][j] = D[m][j]; for (let S = 1; S < FULL; S++) for (let j = 0; j < m; j++) { const cur = dp[S][j]; if (!(S & (1 << j)) || cur === Infinity) continue; for (let k = 0; k < m; k++) if (!(S & (1 << k))) { const ns = S | (1 << k), val = cur + D[j][k]; if (val < dp[ns][k]) dp[ns][k] = val; } } let b = Infinity; for (let j = 0; j < m; j++) b = Math.min(b, dp[FULL - 1][j] + D[j][m]); return b; }
+const CHILE = [['Arica', -18.48, -70.31], ['Iquique', -20.21, -70.15], ['Antofagasta', -23.65, -70.40], ['Calama', -22.46, -68.93], ['Copiapó', -27.37, -70.33], ['La Serena', -29.90, -71.25], ['Valparaíso', -33.05, -71.62], ['Santiago', -33.45, -70.67], ['Rancagua', -34.17, -70.74], ['Talca', -35.43, -71.66], ['Concepción', -36.83, -73.05], ['Temuco', -38.74, -72.60], ['Valdivia', -39.82, -73.25], ['Puerto Montt', -41.47, -72.94]];
+const KSAMPLE = (() => { const r = L.rng(33), rows = []; for (let i = 1; i <= 25; i++) { const w = 4 + Math.floor(r() * 26), v = Math.round(w * (8 + 14 * r())); rows.push([`Proyecto ${i}`, v, w]); } return csv(['proyecto', 'valor', 'costo'], rows); })();
+const TSAMPLE = csv(['ciudad', 'latitud', 'longitud'], CHILE);
+const GSAMPLE = ['S...#.........~~....', '.##.#.######..~~.##.', '.#..#.#.......~~.#..', '.#.##.#.#####.....#.', '.#....#.#...#.###.#.', '.####.#.#.#.#.#...#.', '......#...#...#.###.', '.######.###.###.#...', '.#......#.......#.#.', '.#.######.#######.#.', '.#........#.......#G', '......##...#####....'].join('\n');
+
+/* ---------- módulos ---------- */
+reg({
+  id: 'meta', group: 'Optimización', ref: 'Folleto IA 3a', title: 'Metaheurísticas: escalada, recocido simulado y algoritmo genético', autorun: true,
+  lead: 'Resuelve problemas combinatorios (mochila y viajante) con tres metaheurísticas, las repite con distintas semillas y las compara con el óptimo exacto.',
+  review: `<p>Una <b>metaheurística</b> explora un espacio de soluciones demasiado grande para enumerarlo, aceptando que puede no hallar el óptimo. Por eso se evalúa repitiendo el método con distintas semillas y comparando con una referencia.</p>
+  <ul><li><b>Escalada con reinicios:</b> acepta un vecino si no empeora; al estancarse reinicia desde otra solución al azar.</li><li><b>Recocido simulado:</b> acepta empeoramientos con probabilidad e<sup>−Δ/T</sup>; la temperatura T baja de forma geométrica, de modo que al inicio explora y al final refina.</li><li><b>Algoritmo genético:</b> población con selección por torneo, cruce (uniforme en la mochila; de orden, OX, en el viajante), mutación y elitismo.</li><li><b>Problemas:</b> <i>mochila 0/1</i> (maximizar valor con un presupuesto de costo; óptimo exacto por programación dinámica) y <i>viajante</i> (ruta cerrada más corta; óptimo exacto por Held–Karp hasta 16 ciudades).</li><li><b>Comparación justa:</b> todas las corridas usan el mismo presupuesto de evaluaciones de la función objetivo. Se informa la brecha respecto del óptimo y el porcentaje de corridas que lo alcanzan.</li></ul><p class="small">Las distancias del ejemplo son en línea recta a partir de coordenadas aproximadas, no distancias por carretera.</p>`,
+  code: `# Python (recocido simulado, esquema)\nimport math, random\ncur = s0; T = T0\nfor k in range(n_iter):\n    T = T0 * (T1 / T0) ** (k / n_iter)\n    cand = vecino(cur)\n    d = costo(cand) - costo(cur)\n    if d <= 0 or random.random() < math.exp(-d / T): cur = cand`,
+  build() {
+    const form = Form('meta', [{ k: 'prob', t: 'sel', label: 'Problema', opts: [['knap', 'Mochila 0/1 (selección de proyectos con presupuesto)'], ['tsp', 'Viajante (ruta cerrada más corta)']], val: 'knap' },
+      { k: 'data', t: 'data', label: 'Datos: proyectos (nombre, valor, costo) o ciudades (nombre, latitud, longitud)', sample: KSAMPLE, rows: 7 },
+      { k: 'cap', t: 'num', label: 'Mochila: presupuesto disponible (0 = 40 % del costo total)', val: 0, min: 0 }, { k: 'B', t: 'num', label: 'Presupuesto de evaluaciones por corrida', val: 4000, min: 200, max: 60000, step: 100 }, { k: 'R', t: 'num', label: 'Corridas por método (semillas distintas)', val: 15, min: 3, max: 60, step: 1 }, { k: 'seed', t: 'num', label: 'Semilla base', val: 11 }]);
+    form.els.prob.addEventListener('change', () => { form.els.data.value = form.els.prob.value === 'tsp' ? TSAMPLE : KSAMPLE; form.els.data.dispatchEvent(new Event('input')); });
+    return {
+      form, run(out, v) {
+        const tb = L.parseTable(v.data), nums = tb.cols.filter(c => c.num), B = Math.round(v.B), R = Math.round(v.R); let P, ref, refTxt, base, baseName, unit, fmtv = x => F(x, 2), items = null, xy = null, names = null;
+        if (v.prob === 'knap') {
+          if (nums.length < 2) throw new Error('Se necesitan dos columnas numéricas: valor y costo.');
+          const vi = tb.cols.findIndex(c => c.num && /valor|benef|gananc/i.test(c.name)), wi = tb.cols.findIndex(c => c.num && /costo|peso|tama/i.test(c.name)), cv = tb.cols[vi >= 0 ? vi : tb.cols.indexOf(nums[0])], cw = tb.cols[wi >= 0 ? wi : tb.cols.indexOf(nums[1])];
+          const val = cv.v, wt = cw.v, tot = L.sum(wt), cap = v.cap > 0 ? v.cap : Math.round(0.4 * tot); names = tb.cols[0].raw; if (val.some(isNaN) || wt.some(isNaN)) throw new Error('Hay valores no numéricos en valor o costo.');
+          P = knapProb(val, wt, cap); ref = knapExact(val, wt, cap); const ord = val.map((x, i) => i).sort((a, b) => val[b] / wt[b] - val[a] / wt[a]); let t = 0, g = 0; ord.forEach(i => { if (t + wt[i] <= cap) { t += wt[i]; g += val[i]; } }); base = g; baseName = 'Voraz por valor/costo'; unit = 'valor'; items = { val, wt, cap, tot };
+        } else {
+          const la = nums[0], lo = nums[1]; if (!la || !lo) throw new Error('Se necesitan columnas numéricas de latitud y longitud.'); const lat0 = L.mean(la.v) * Math.PI / 180; xy = la.v.map((y, i) => [lo.v[i] * 111.32 * Math.cos(lat0), y * 110.57]); names = tb.cols[0].raw;
+          if (xy.length < 5) throw new Error('Ingrese al menos 5 ciudades.'); P = tspProb(xy); ref = tspExact(P.D); let bn = Infinity; for (let s = 0; s < P.n; s++) { const used = new Set([s]); let cur = s, len = 0; for (let k = 1; k < P.n; k++) { let b = -1; for (let j = 0; j < P.n; j++) if (!used.has(j) && (b < 0 || P.D[cur][j] < P.D[cur][b])) b = j; len += P.D[cur][b]; used.add(b); cur = b; } len += P.D[cur][s]; bn = Math.min(bn, len); } base = bn; baseName = 'Vecino más cercano (mejor inicio)'; unit = 'longitud (km)'; fmtv = x => F(x, 1);
+        }
+        const ALG = [['hc', 'Escalada con reinicios', 1], ['sa', 'Recocido simulado', 2], ['ga', 'Algoritmo genético', 3]], res = {}; let globalBest = Infinity, globalSol = null;
+        ALG.forEach(([k]) => { const bests = [], curves = []; for (let r = 0; r < R; r++) { const o = runMeta(P, k, B, L.rng(Math.round(v.seed) * 1000 + r * 17 + k.charCodeAt(0))); bests.push(o.best); curves.push(o.curve); if (o.best < globalBest) { globalBest = o.best; globalSol = o.sol; } } res[k] = { bests, curve: curves[0].map((_, i) => L.mean(curves.map(c => c[i]))) }; });
+        const refCost = ref != null ? (P.kind === 'knap' ? -ref : ref) : globalBest, exact = ref != null, sgn = P.kind === 'knap' ? -1 : 1, disp = c => sgn * c;
+        const gap = c => { const g = (c - refCost) / Math.abs(refCost) * 100; return Math.abs(g) < 1e-8 ? 0 : g; };
+        const rows = ALG.map(([k, nm]) => { const b = res[k].bests.map(x => +x.toFixed(6)), vals = b.map(disp), gp = b.map(gap), hit = b.filter(c => Math.abs(c - refCost) < 1e-6 * Math.max(1, Math.abs(refCost))).length; res[k].gapM = L.mean(gp); res[k].hit = hit / R; res[k].sd = L.sd(vals); res[k].meanV = L.mean(vals); return [nm, P.kind === 'knap' ? Math.max(...vals) : Math.min(...vals), L.mean(vals), L.sd(vals), P.kind === 'knap' ? Math.min(...vals) : Math.max(...vals), F(L.mean(gp), 2) + ' %', F(100 * hit / R, 0) + ' %']; });
+        let html = kpis([['Referencia', exact ? 'Óptimo exacto' : 'Mejor encontrada', fmtv(disp(refCost))], [baseName, fmtv(base), exact ? `${F(Math.abs(base - disp(refCost)) / Math.abs(disp(refCost)) * 100, 2)} % del óptimo` : ''], ['Evaluaciones por corrida', B], ['Corridas por método', R]]);
+        html += H4(`Resultados de ${R} corridas por método (${unit})`) + tbl(['Método', 'Mejor', 'Media', 'D.E.', 'Peor', 'Brecha media', exact ? 'Corridas en el óptimo' : 'Corridas en la mejor conocida'], rows, { d: P.kind === 'knap' ? 1 : 1 });
+        const xs = res.hc.curve.map((_, i) => Math.round(i * B / 60)), ser = ALG.map(([k, nm, c]) => ({ name: nm, x: xs, y: res[k].curve.map(disp), c })); ser.push({ name: exact ? 'Óptimo exacto' : 'Mejor encontrada', x: [0, B], y: [disp(refCost), disp(refCost)], c: 4, dash: '5 4' });
+        html += fig(lineSVG(ser, { title: `Convergencia media (${unit})`, xlab: 'Evaluaciones de la función objetivo', ylab: unit, ylim: ext([...ser.flatMap(s => s.y)], .08) }));
+        if (P.kind === 'tsp') { const tour = globalSol, tx = [...tour, tour[0]].map(i => xy[i][0]), ty = [...tour, tour[0]].map(i => xy[i][1]); html += fig(scatterSVG(xy.map(p => p[0]), xy.map(p => p[1]), { title: `Mejor ruta encontrada: ${F(globalBest, 1)} km`, xlab: 'Este-oeste (km)', ylab: 'Norte-sur (km)', lines: [{ x: tx, y: ty, c: 2, w: 2 }], w: 520, h: 460 }), 'Orden de visita: ' + [...tour].map(i => esc(names[i])).join(' → ') + ' → ' + esc(names[tour[0]])); }
+        else { const sel = globalSol.map((s, i) => s ? i : -1).filter(i => i >= 0); html += `<p class="small"><b>Mejor selección encontrada</b> (${sel.length} de ${items.val.length}; costo ${F(L.sum(sel.map(i => items.wt[i])), 0)} de ${F(items.cap, 0)}; valor ${F(disp(globalBest), 0)}): ${sel.map(i => esc(names[i])).join(', ')}.</p>`; }
+        const bestAlg = ALG.slice().sort((a, b) => res[a[0]].gapM - res[b[0]].gapM)[0], ba = res[bestAlg[0]], beatBase = P.kind === 'knap' ? disp(globalBest) > base + 1e-9 : disp(globalBest) < base - 1e-9;
+        html += interp(`<p>Con el mismo presupuesto de ${B} evaluaciones, el método con menor brecha media fue <b>${bestAlg[1]}</b> (${F(ba.gapM, 2)} % por encima ${exact ? 'del óptimo exacto' : 'de la mejor solución conocida'}; alcanzó ${exact ? 'el óptimo' : 'esa solución'} en ${F(100 * ba.hit, 0)} % de las corridas). ${ba.sd / Math.abs(ba.meanV) > 0.02 ? 'La variación entre corridas es apreciable: no confíe en una sola ejecución y repita con varias semillas.' : 'La variación entre corridas es pequeña, lo que da confianza en la repetibilidad.'} ${beatBase ? `La mejor solución supera a la heurística constructiva (${baseName.toLowerCase()}).` : `Ninguna metaheurística superó a la heurística constructiva (${baseName.toLowerCase()}): con este presupuesto no justifican su complejidad.`}${exact ? '' : ' Como el problema es demasiado grande para el cálculo exacto, la referencia es la mejor solución encontrada y la brecha es solo relativa a ella.'}</p><p class="small">Una metaheurística no garantiza el óptimo; su calidad se demuestra con repeticiones y con una referencia, como aquí.</p>`);
+        out.innerHTML = html;
+      }
+    };
+  }
+});
+
+reg({
+  id: 'csp', group: 'Optimización', ref: 'Folleto IA 3b', title: 'Restricciones y optimización lineal: simplex y satisfacción de restricciones', autorun: true,
+  lead: 'Optimización lineal con precios sombra y restricciones ligadoras (método simplex) y satisfacción de restricciones con búsqueda inteligente (coloreo de grafos y N reinas).',
+  review: `<p><b>Programación lineal.</b> Maximiza o minimiza c·x sujeto a restricciones lineales y x ≥ 0. La solución óptima, si existe, está en un vértice de la región factible; el método simplex recorre vértices mejorando el objetivo. Se resuelve con penalización Big-M para restricciones ≥ y =.</p><ul><li><b>Restricción ligadora:</b> se cumple con igualdad en el óptimo; es el recurso que limita el resultado.</li><li><b>Precio sombra:</b> cuánto cambia el objetivo por una unidad más del límite de esa restricción (se calcula resolviendo de nuevo con el límite aumentado). Una restricción no ligadora tiene precio sombra cero.</li><li>Con dos variables se grafica la región factible, la recta del objetivo y el óptimo.</li></ul>
+  <p><b>Satisfacción de restricciones (CSP).</b> Se asignan valores a variables respetando restricciones. La <i>búsqueda con retroceso</i> prueba asignaciones y retrocede al fallar; mejora mucho con <b>MRV</b> (elegir la variable con menos valores posibles) y <b>comprobación hacia adelante</b> (podar los valores que quedan imposibles). Se compara el número de nodos explorados con y sin esas heurísticas.</p><ul><li><b>Coloreo de grafos:</b> asigna «colores» (p. ej., bloques horarios) de modo que elementos conectados (evaluaciones que comparten alumnos) no coincidan. El menor número de colores que funciona está demostrado óptimo porque con uno menos la búsqueda exhaustiva no encuentra solución.</li><li><b>N reinas:</b> se cuentan las soluciones y se contrastan con los valores conocidos.</li></ul>`,
+  code: `# Python\nfrom scipy.optimize import linprog\nres = linprog(c=[-40, -30], A_ub=[[2, 1], [1, 1], [1, 0]], b_ub=[100, 80, 40])\nprint(res.x, -res.fun)  # solución y valor\n# CSP: from ortools.sat.python import cp_model  # o python-constraint`,
+  build() {
+    const form = Form('csp', [{ k: 'tool', t: 'sel', label: 'Herramienta', opts: [['lp', 'Optimización lineal (simplex)'], ['csp', 'Restricciones: coloreo de grafos y N reinas']], val: 'lp' },
+      { k: 'obj', t: 'sel', label: 'LP: objetivo', opts: [['max', 'Maximizar'], ['min', 'Minimizar']], val: 'max' }, { k: 'vnames', t: 'text', label: 'LP: nombres de las variables', val: 'Producto A, Producto B' }, { k: 'cvec', t: 'text', label: 'LP: coeficientes de la función objetivo', val: '40, 30' },
+      { k: 'cons', t: 'area', label: 'LP: restricciones (coeficientes; operador; límite; nombre)', rows: 5, val: '2, 1; <=; 100; Horas de máquina\n1, 1; <=; 80; Horas de mano de obra\n1, 0; <=; 40; Demanda máxima de A' },
+      { k: 'prob', t: 'sel', label: 'CSP: problema', opts: [['color', 'Coloreo de grafos (horarios de evaluaciones)'], ['queens', 'N reinas']], val: 'color' },
+      { k: 'edges', t: 'area', label: 'CSP coloreo: pares en conflicto (A-B, separados por coma o salto de línea)', rows: 4, val: 'Cálculo-Física, Cálculo-Álgebra, Cálculo-Estadística, Física-Química, Física-Programación, Álgebra-Programación, Álgebra-Estadística, Química-Biología, Estadística-Biología, Programación-Datos, Estadística-Datos, Biología-Datos' }, { k: 'n', t: 'num', label: 'CSP N reinas: tamaño del tablero (4 a 10)', val: 8, min: 4, max: 10, step: 1 }]);
+    return {
+      form, run(out, v) {
+        let html = '';
+        if (v.tool === 'lp') {
+          const P_ = parseLP(v), sol = lpSolve(P_.c, P_.rows, P_.sense); const sense = P_.sense === 'max' ? 'Maximizar' : 'Minimizar';
+          if (sol.status !== 'optimal') { out.innerHTML = `<div class="err"><strong>${LPST[sol.status]}.</strong> ${sol.status === 'infeasible' ? 'Las restricciones son incompatibles: ningún punto las cumple todas. Revise los límites.' : sol.status === 'unbounded' ? 'El objetivo puede mejorar sin límite: falta alguna restricción.' : 'Simplifique el problema.'}</div>`; return; }
+          const use = P_.rows.map(r => L.sum(r.a.map((a, j) => a * sol.x[j]))), sl = P_.rows.map((r, i) => r.t === '<=' ? r.b - use[i] : r.t === '>=' ? use[i] - r.b : 0), ligada = sl.map(s => Math.abs(s) < 1e-6), sh = P_.rows.map((r, i) => lpShadow(P_.c, P_.rows, P_.sense, i, sol.obj)), feasOK = P_.rows.every((r, i) => r.t === '<=' ? use[i] <= r.b + 1e-6 : r.t === '>=' ? use[i] >= r.b - 1e-6 : Math.abs(use[i] - r.b) < 1e-6);
+          html += kpis([['Estado', LPST[sol.status]], [`${sense} → valor óptimo`, sol.obj], ['Restricciones ligadoras', ligada.filter(Boolean).length, `de ${P_.rows.length}`], ['Verificación de factibilidad', feasOK ? 'Cumple todas' : 'Viola alguna']]);
+          html += H4('Solución óptima') + tbl(['Variable', 'Valor', 'Coef. objetivo', 'Aporte'], P_.names.map((n, j) => [esc(n), sol.x[j], P_.c[j], P_.c[j] * sol.x[j]]), { d: 3 });
+          html += H4('Restricciones, holgura y precio sombra') + tbl(['Restricción', 'Uso', 'Límite', 'Holgura', 'Ligadora', 'Precio sombra'], P_.rows.map((r, i) => [esc(r.name), use[i], `${r.t} ${F(r.b, 2)}`, sl[i], ligada[i] ? '<b class="warn">Sí</b>' : 'No', isNaN(sh[i]) ? '—' : sh[i]]), { d: 3 });
+          if (P_.c.length === 2) {
+            const X = Math.max(1, ...P_.rows.filter(r => r.a[0] > 1e-9 && r.t === '<=').map(r => r.b / r.a[0]), sol.x[0] * 1.3) * 1.12, Y = Math.max(1, ...P_.rows.filter(r => r.a[1] > 1e-9 && r.t === '<=').map(r => r.b / r.a[1]), sol.x[1] * 1.3) * 1.12; let poly = [[0, 0], [X, 0], [X, Y], [0, Y]]; P_.rows.forEach(r => { if (r.t !== '=') poly = clipPoly(poly, r.a, r.b, r.t); });
+            const lines = P_.rows.map((r, i) => { const pts = []; if (Math.abs(r.a[1]) > 1e-9) { pts.push([0, r.b / r.a[1]], [X, (r.b - r.a[0] * X) / r.a[1]]); } else if (Math.abs(r.a[0]) > 1e-9) pts.push([r.b / r.a[0], 0], [r.b / r.a[0], Y]); return { pts, i }; });
+            html += fig(plot({ title: 'Región factible y óptimo', xlab: P_.names[0], ylab: P_.names[1], xlim: [0, X], ylim: [0, Y] }, a => `<polygon class="f3" fill-opacity=".18" points="${poly.map(p => a.sx(p[0]).toFixed(1) + ',' + a.sy(p[1]).toFixed(1)).join(' ')}"/>` + lines.filter(l => l.pts.length).map(l => `<polyline class="ln s${l.i % 5 + 1}" fill="none" stroke-width="1.6" points="${l.pts.map(p => a.sx(p[0]).toFixed(1) + ',' + a.sy(p[1]).toFixed(1)).join(' ')}"/>`).join('') + (Math.abs(P_.c[1]) > 1e-9 ? path([0, X], [sol.obj / P_.c[1], (sol.obj - P_.c[0] * X) / P_.c[1]], a.sx, a.sy, 4, 2.2, '6 4') : '') + dots([{ x: sol.x[0], y: sol.x[1], c: 2, r: 6 }], a.sx, a.sy, 2, 6, 1)), 'Sombreado: región factible. Líneas finas: restricciones. Línea punteada: curva de nivel del objetivo que pasa por el óptimo (punto grande).');
+          }
+          const top = P_.rows.map((r, i) => [r, sh[i]]).filter(a => Math.abs(a[1]) > 1e-9).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0];
+          html += interp(`<p>${sense} da un valor de <b>${F(sol.obj, 2)}</b> con ${P_.names.map((n, j) => `${esc(n)} = ${F(sol.x[j], 2)}`).join(' y ')}. ${ligada.filter(Boolean).length ? `Limitan el resultado: ${P_.rows.filter((_, i) => ligada[i]).map(r => esc(r.name)).join(', ')}.` : 'Ninguna restricción es ligadora.'} ${top ? `El recurso más valioso es «${esc(top[0].name)}»: una unidad más ${top[1] > 0 ? 'aumentaría' : 'reduciría'} el objetivo en ${F(Math.abs(top[1]), 2)} (precio sombra), válido para cambios pequeños del límite.` : ''} Las restricciones no ligadoras tienen holgura y precio sombra cero: aumentar esos recursos no mejora el resultado.</p>`);
+        } else if (v.prob === 'color') {
+          const pairs = v.edges.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean).map(s => s.split('-').map(x => x.trim())).filter(p => p.length === 2 && p[0] && p[1] && p[0] !== p[1]); if (!pairs.length) throw new Error('Ingrese pares de conflicto con el formato A-B.');
+          const names = [...new Set(pairs.flat())], idx = Object.fromEntries(names.map((n, i) => [n, i])), nbr = names.map(() => new Set()); pairs.forEach(([a, b]) => { nbr[idx[a]].add(idx[b]); nbr[idx[b]].add(idx[a]); }); const nb = nbr.map(s => [...s]), conflict = (i, j, a, b) => a === b, nv = names.length;
+          let chi = null, proof = null; for (let k = 1; k <= nv; k++) { const r = cspSolve(nv, Array.from({ length: nv }, () => [...Array(k).keys()]), conflict, nb, true, false, 800000); if (r.sol) { chi = { k, ...r }; break; } proof = r; }
+          if (!chi) throw new Error('No se encontró coloreo con la búsqueda disponible.');
+          const dom = Array.from({ length: nv }, () => [...Array(chi.k).keys()]), nv_ = cspSolve(nv, dom, conflict, nb, false, false), sm = cspSolve(nv, dom, conflict, nb, true, false), ok = pairs.every(([a, b]) => chi.sol[idx[a]] !== chi.sol[idx[b]]);
+          html += kpis([['Elementos', nv], ['Conflictos', pairs.length], ['Mínimo de colores', chi.k, proof && !proof.abort ? 'demostrado óptimo' : 'no demostrado'], ['Verificación', ok ? 'Ningún conflicto con el mismo color' : 'Hay conflictos']]);
+          html += H4('Asignación') + tbl(['Elemento', 'Color / bloque', 'Conflictos con'], names.map((n, i) => [esc(n), 'Bloque ' + (chi.sol[i] + 1), nb[i].map(j => esc(names[j])).join(', ')]));
+          html += H4('Efecto de las heurísticas de búsqueda (con k = ' + chi.k + ')') + tbl(['Estrategia', 'Nodos explorados', 'Encontró solución'], [['Retroceso simple (orden fijo)', nv_.nodes, nv_.sol ? 'Sí' : 'No'], ['MRV + comprobación hacia adelante', sm.nodes, sm.sol ? 'Sí' : 'No']], { d: 0 });
+          html += interp(`<p>Se necesitan <b>${chi.k} bloques</b> como mínimo${proof && !proof.abort ? `: con ${chi.k - 1} la búsqueda exhaustiva no encontró solución (${proof.nodes} nodos), lo que demuestra que ${chi.k} es el mínimo` : ''}. Las heurísticas ${sm.nodes < nv_.nodes ? `redujeron los nodos explorados de ${nv_.nodes} a ${sm.nodes} (${F(100 * (1 - sm.nodes / nv_.nodes), 0)} % menos)` : 'no redujeron los nodos en este caso pequeño; su ventaja crece con el tamaño del problema'}. ${ok ? 'La solución fue verificada: ningún par en conflicto comparte bloque.' : ''}</p>`);
+        } else {
+          const n = Math.round(v.n), dom = Array.from({ length: n }, () => [...Array(n).keys()]), nbr = Array.from({ length: n }, (_, i) => [...Array(n).keys()].filter(j => j !== i)), conflict = (i, j, a, b) => a === b || Math.abs(a - b) === Math.abs(i - j), t0 = performance.now(), all = cspSolve(n, dom, conflict, nbr, true, true, 5000000), ms = performance.now() - t0, one_n = cspSolve(n, dom, conflict, nbr, false, false), one_s = cspSolve(n, dom, conflict, nbr, true, false), kn = QKNOWN[n];
+          html += kpis([['Tablero', `${n} × ${n}`], ['Soluciones contadas', all.abort ? '≥ ' + all.count : all.count], ['Valor conocido', kn], ['Verificación', all.abort ? 'Búsqueda truncada' : all.count === kn ? 'Coincide' : 'No coincide']]);
+          if (all.sol) { let g = '<div class="tw"><table class="t qb"><tbody>'; for (let r = 0; r < n; r++) { g += '<tr>'; for (let c = 0; c < n; c++) g += `<td class="${(r + c) % 2 ? 'dk' : 'lt'}">${all.sol[r] === c ? '♛' : ''}</td>`; g += '</tr>'; } html += H4('Primera solución encontrada') + g + '</tbody></table></div>'; }
+          html += H4('Búsqueda de una solución') + tbl(['Estrategia', 'Nodos explorados'], [['Retroceso simple (orden fijo)', one_n.nodes], ['MRV + comprobación hacia adelante', one_s.nodes]], { d: 0 });
+          html += interp(`<p>El tablero de ${n} × ${n} admite <b>${all.abort ? 'al menos ' : ''}${all.count}</b> soluciones, ${all.count === kn ? 'igual al valor conocido de la literatura (' + kn + '): la búsqueda exhaustiva es correcta' : 'distinto del valor conocido (' + kn + ')'}. Contarlas todas exploró ${all.nodes} nodos en ${F(ms, 0)} ms. Para hallar solo una, las heurísticas ${one_s.nodes < one_n.nodes ? `redujeron los nodos de ${one_n.nodes} a ${one_s.nodes}` : 'no mejoraron el recuento en este tamaño'}.</p>`);
+        }
+        out.innerHTML = html;
+      }
+    };
+  }
+});
+
+reg({
+  id: 'busq', group: 'Optimización', ref: 'Folleto IA 3c', title: 'Búsqueda autónoma: BFS, costo uniforme, voraz y A*', autorun: true,
+  lead: 'Un agente busca un camino en un mapa con obstáculos y terreno costoso; compara algoritmos y verifica si la heurística de A* es admisible.',
+  review: `<p>Un agente de búsqueda parte de un estado inicial, expande estados vecinos y busca la meta. La diferencia entre algoritmos está en qué nodo expande primero.</p><ul><li><b>BFS:</b> expande por número de pasos; es óptimo solo si todos los pasos cuestan lo mismo.</li><li><b>Costo uniforme (Dijkstra):</b> expande el nodo con menor costo acumulado g; siempre óptimo con costos no negativos.</li><li><b>Voraz:</b> expande el nodo con menor heurística h (distancia estimada a la meta); rápido pero puede no ser óptimo.</li><li><b>A*:</b> expande el nodo con menor f = g + w·h. Es <b>óptimo</b> si h es <i>admisible</i> (h ≤ costo real restante) y w = 1; con w &gt; 1 (A* ponderado) explora menos nodos a costa de optimalidad. Si además es <i>consistente</i> (h(u) ≤ costo(u,v) + h(v)), nunca reabre nodos.</li></ul><p class="small">Mapa: «#» muro, «.» costo 1, «~» terreno costoso (costo 3), «S» inicio, «G» meta. Con 8 movimientos las diagonales cuestan √2 veces el costo de la celda y no se cortan esquinas.</p>`,
+  code: `# Python (A*, esquema)\nimport heapq\nopen_ = [(h(start), 0, start)]\nwhile open_:\n    f, g, u = heapq.heappop(open_)\n    if u == goal: break\n    for v, c in vecinos(u):\n        if g + c < G.get(v, 1e9):\n            G[v] = g + c; heapq.heappush(open_, (g + c + h(v), G[v], v))`,
+  build() {
+    const form = Form('busq', [{ k: 'map', t: 'area', label: 'Mapa', rows: 12, val: GSAMPLE }, { k: 'hname', t: 'sel', label: 'Heurística de A* y voraz', opts: [['manhattan', 'Manhattan'], ['octile', 'Octil (para 8 movimientos)'], ['euclid', 'Euclídea'], ['zero', 'Cero (A* se vuelve costo uniforme)']], val: 'manhattan' }, { k: 'w', t: 'num', label: 'Peso de la heurística w en A* (1 = óptimo)', val: 1, min: 1, max: 10 }, { k: 'diag', t: 'check', label: 'Permitir 8 movimientos (diagonales)', val: false }, { k: 'show', t: 'sel', label: 'Algoritmo que se dibuja', opts: [['astar', 'A*'], ['ucs', 'Costo uniforme'], ['greedy', 'Voraz'], ['bfs', 'BFS']], val: 'astar' }]);
+    return {
+      form, run(out, v) {
+        const g = parseGrid(v.map), NAMES = { bfs: 'BFS (pasos)', ucs: 'Costo uniforme', greedy: 'Voraz', astar: v.w > 1 ? `A* ponderado (w = ${F(v.w, 1)})` : 'A*' }, R = {}; ['bfs', 'ucs', 'greedy', 'astar'].forEach(a => R[a] = gridSearch(g, a === 'ucs' ? 'ucs' : a, v.hname, v.w, v.diag));
+        if (!R.ucs.found) { out.innerHTML = '<div class="err"><strong>No existe camino</strong> entre S y G con este mapa: los muros lo bloquean.</div>'; return; }
+        const opt = R.ucs.cost, hs = hStar(g, v.diag), hf = (x, y) => { const dx = Math.abs(x - g.G[0]), dy = Math.abs(y - g.G[1]); return v.hname === 'zero' ? 0 : v.hname === 'manhattan' ? dx + dy : v.hname === 'euclid' ? Math.hypot(dx, dy) : Math.max(dx, dy) + (Math.SQRT2 - 1) * Math.min(dx, dy); };
+        let adm = true, cons = true, worst = 0; for (let y = 0; y < g.H; y++) for (let x = 0; x < g.W; x++) { const s = hs[y * g.W + x]; if (!isFinite(s) || !g.cell[y][x]) continue; const e = hf(x, y) - s; if (e > 1e-9) { adm = false; worst = Math.max(worst, e); } }
+        const mv = v.diag ? [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]] : [[1, 0], [-1, 0], [0, 1], [0, -1]]; for (let y = 0; y < g.H && cons; y++) for (let x = 0; x < g.W && cons; x++) { if (!g.cell[y][x]) continue; for (const m of mv) { const nx = x + m[0], ny = y + m[1]; if (nx < 0 || ny < 0 || nx >= g.W || ny >= g.H || !g.cell[ny][nx]) continue; if (m[0] && m[1] && (!g.cell[y][nx] || !g.cell[ny][x])) continue; if (hf(x, y) > g.cell[ny][nx] * (m[0] && m[1] ? Math.SQRT2 : 1) + hf(nx, ny) + 1e-9) { cons = false; break; } } }
+        const rows = ['bfs', 'ucs', 'greedy', 'astar'].map(a => { const r = R[a]; return [NAMES[a], r.found ? 'Sí' : 'No', r.found ? r.cost : NaN, r.steps, r.expanded, r.found && Math.abs(r.cost - opt) < 1e-9 ? '<b class="good">Óptimo</b>' : r.found ? `<b class="warn">+${F(100 * (r.cost / opt - 1), 1)} %</b>` : '—']; });
+        const sh = R[v.show], onp = new Set(sh.path.map(p => p[1] * g.W + p[0])), exp = new Set(sh.order), C = 22; let svg = `<svg class="chart gridmap" viewBox="0 0 ${g.W * C + 2} ${g.H * C + 2}" role="img" aria-label="Mapa con el camino encontrado por ${esc(NAMES[v.show])}">`;
+        for (let y = 0; y < g.H; y++) for (let x = 0; x < g.W; x++) { const c = g.cell[y][x], k = y * g.W + x, cls = !c ? 'gm-w' : onp.has(k) ? 'gm-p' : exp.has(k) ? (c === 3 ? 'gm-ce' : 'gm-e') : c === 3 ? 'gm-c' : 'gm-f'; svg += `<rect class="${cls}" x="${x * C + 1}" y="${y * C + 1}" width="${C}" height="${C}"/>`; if (x === g.S[0] && y === g.S[1]) svg += `<text class="gm-t" x="${x * C + C / 2 + 1}" y="${y * C + C / 2 + 5}" text-anchor="middle">S</text>`; if (x === g.G[0] && y === g.G[1]) svg += `<text class="gm-t" x="${x * C + C / 2 + 1}" y="${y * C + C / 2 + 5}" text-anchor="middle">G</text>`; }
+        svg += '</svg>';
+        const html_ = kpis([['Costo óptimo (costo uniforme)', opt], ['Nodos expandidos por A*', R.astar.expanded, `costo uniforme: ${R.ucs.expanded}`], ['Heurística admisible', adm ? 'Sí' : 'No', adm ? '' : `sobreestima hasta ${F(worst, 2)}`], ['Heurística consistente', cons ? 'Sí' : 'No']]) + H4('Comparación de algoritmos') + tbl(['Algoritmo', 'Camino', 'Costo', 'Pasos', 'Nodos expandidos', 'Calidad'], rows, { d: 2 }) + fig(svg, `Camino de ${esc(NAMES[v.show])} (azul), celdas expandidas (verde claro), muros (oscuro), terreno costoso (ocre).`);
+        const sv = 100 * (1 - R.astar.expanded / R.ucs.expanded);
+        const html2 = html_ + interp(`<p>El camino óptimo cuesta <b>${F(opt, 2)}</b>. <b>${esc(NAMES.astar)}</b> ${Math.abs(R.astar.cost - opt) < 1e-9 ? 'encontró ese costo óptimo' : `entregó un camino ${F(100 * (R.astar.cost / opt - 1), 1)} % más caro que el óptimo`} expandiendo ${R.astar.expanded} nodos frente a ${R.ucs.expanded} del costo uniforme (${sv >= 0 ? F(sv, 0) + ' % menos' : F(-sv, 0) + ' % más'}). La heurística ${v.hname === 'zero' ? 'cero es admisible pero no guía la búsqueda' : adm ? 'es admisible, por lo que A* con w = 1 es óptimo' : 'NO es admisible (sobreestima el costo restante): A* puede perder la optimalidad; cambie de heurística'}. ${R.greedy.found && R.greedy.cost > opt + 1e-9 ? `El voraz fue rápido (${R.greedy.expanded} nodos) pero ${F(100 * (R.greedy.cost / opt - 1), 1)} % más caro.` : ''} ${R.bfs.found && Math.abs(R.bfs.cost - opt) > 1e-9 ? 'BFS minimiza pasos, no costo, y por eso no es óptimo con terreno costoso.' : ''}</p>`);
+        out.innerHTML = html2;
+      }
+    };
+  }
+});
+
 /* ===== RUTAS: procesos encadenados con fuentes en línea ===== */
 const LV = { ok: 'Supera', warn: 'Advertencia', bad: 'No supera', info: 'Dato' };
 const fnd = (l, t) => ({ l, t });
@@ -2088,6 +2346,7 @@ const SYN = {
   serie() { const r = L.rng(61), rows = []; let y = 900; const d0 = Date.UTC(2025, 0, 2); for (let i = 0; i < 250; i++) { y += 0.25 + 6 * L.randn(r); rows.push([isoDay(new Date(d0 + i * 864e5)), r2(y, 2)]); } return csv(['fecha', 'valor_sintetico'], rows); },
   aire() { const r = L.rng(62), rows = [], d0 = Date.UTC(2025, 4, 1); let e = 0; for (let i = 0; i < 90; i++) { const T = 12 - 5 * Math.sin(2 * Math.PI * i / 120) + 2 * L.randn(r), W = Math.max(0.5, 3 + L.randn(r) * 1.2), H = 55 + 10 * L.randn(r); e = 0.7 * e + L.randn(r) * 0.22; const pm25 = Math.exp(3.1 + 0.07 * (12 - T) - 0.09 * (W - 3) + e), pm10 = 1.7 * pm25 + 4 * L.randn(r) + 8, o3 = Math.max(5, 30 + 2.6 * T - 0.1 * pm25 + 4 * L.randn(r)), no2 = Math.max(2, 14 + 0.25 * pm25 + 3 * L.randn(r)), co = Math.max(0.1, 0.25 + 0.01 * pm25 + 0.05 * L.randn(r)); rows.push([isoDay(new Date(d0 + i * 864e5)), r2(pm25, 2), r2(pm10, 2), r2(o3, 2), r2(no2, 2), r2(co, 3), r2(T, 2), r2(W, 2), r2(H, 1)]); } return csv(['fecha', 'pm2_5', 'pm10', 'ozono', 'no2', 'co', 'temperatura', 'viento', 'humedad'], rows); },
   sismos() { const r = L.rng(63), rows = [], zs_ = [[-22, -69, 100, 18], [-33, -71.5, 45, 22], [-38.5, -73, 20, 15], [-18.5, -69.5, 120, 10]], d0 = Date.UTC(2025, 0, 1); for (let i = 0; i < 420; i++) { const z = zs_[Math.floor(r() * 4)], lat = z[0] + 1.6 * L.randn(r), lon = z[1] + 0.9 * L.randn(r), dep = Math.max(2, z[2] + z[3] * L.randn(r)), mag = Math.min(7.8, 4.5 + -Math.log(1 - r()) * 0.42 + (z[2] > 90 ? 0.05 : 0)); rows.push([isoDay(new Date(d0 + Math.floor(r() * 330) * 864e5)), r2(lat, 3), r2(lon, 3), r2(dep, 1), r2(mag, 1)]); } return csv(['fecha', 'latitud', 'longitud', 'prof_km', 'mag'], rows); },
+  demanda() { const r = L.rng(65), rows = [], d0 = Date.UTC(2025, 5, 1), wk = [-20, -10, 0, 8, 18, 45, 25]; for (let i = 0; i < 140; i++) rows.push([isoDay(new Date(d0 + i * 864e5)), r2(Math.max(20, 200 + 0.25 * i + wk[i % 7] + 12 * L.randn(r)), 1)]); return csv(['fecha', 'demanda_sintetica'], rows); },
   paises() { const r = L.rng(64), nm = 'CHL ARG BOL BRA COL CRI ECU MEX PER PRY URY PAN DOM GTM HND NIC SLV JAM ESP PRT ITA FRA DEU GBR USA CAN JPN KOR AUS NZL TUR ZAF'.split(' '), rows = nm.map(n => { const z = L.randn(r), z2 = L.randn(r); return [n, r2(Math.exp(9.2 + 0.9 * z + 0.2 * L.randn(r)), 0), r2(74 + 4 * z + 1.2 * z2 + 1.5 * L.randn(r), 1), r2(7.5 + 1.8 * z + 1.1 * z2 + 1.2 * L.randn(r), 2), r2(74 + 7 * z + 5 * z2 + 6 * L.randn(r), 1)]; }); return csv(['pais', 'pib_pc', 'esperanza_vida', 'gasto_salud', 'urbana'], rows); }
 };
 
@@ -2139,6 +2398,10 @@ const SRC = {
       return { csv: csv(['pais', ...inds.map(i => i[0])], rows), url: urls[0], fuente: 'Banco Mundial (Indicators API v2)', nota: 'Último valor disponible entre 2015 y 2024 para cada indicador; el año puede diferir entre países.' };
     }
   },
+  demanda: {
+    name: 'Serie de demanda propia (CSV) · sin consulta en línea', site: '', route: 'decision', syn: SYN.demanda, fields: [],
+    async get() { throw new Error('esta ruta usa su propia serie de demanda: pegue o cargue un CSV con fecha y demanda, o use la muestra sintética'); }
+  },
   url: {
     name: 'Dirección (URL) de un archivo CSV', site: 'cualquiera que permita consultas', route: null, syn: SYN.serie,
     fields: [{ k: 'u', t: 'text', label: 'URL del CSV (con encabezado)', val: '' }],
@@ -2151,18 +2414,19 @@ const ROUTES = {
   serie: { name: 'Serie de tiempo: del dato al pronóstico', src: 'mindicador', tgt: null, s: 1, steps: ['desc', 'unit', 'arima'], lead: 'Describe la serie, comprueba si es estacionaria, decide cuánto diferenciar y pronostica validando contra una predicción ingenua.' },
   aire: { name: 'Calidad del aire: modelo explicativo y pronóstico', src: 'openmeteo', tgt: 'pm2_5', s: 7, pvars: ['temperatura', 'viento', 'humedad'], steps: ['desc', 'corr', 'mlr', 'outl', 'het', 'arima'], lead: 'Elige predictores meteorológicos por correlación, ajusta una regresión, revisa puntos influyentes y corrige la inferencia si los residuos incumplen supuestos; luego pronostica.' },
   episodio: { name: 'Calidad del aire: probabilidad de un episodio (regresión logística)', src: 'openmeteo', tgt: 'pm2_5', s: 1, pvars: ['temperatura', 'viento', 'humedad'], steps: ['desc', 'corr', 'logit'], lead: 'Define un episodio como un día en que el contaminante alcanza un umbral y estima, con la meteorología, la probabilidad de que ocurra; valida con los últimos días del período (sin mezclar el tiempo) y compara con una clasificación trivial.' },
+  decision: { name: 'Demanda: del pronóstico a la decisión de producción', src: 'demanda', tgt: null, s: 7, steps: ['desc', 'unit', 'arima', 'plan'], lead: 'Pronostica la demanda con SARIMA, valida el pronóstico y resuelve un plan de producción óptimo por programación lineal con capacidad limitada; luego prueba si el plan resiste el escenario alto del intervalo de confianza.' },
   sismos: { name: 'Sismicidad: zonas y diferencias de magnitud', src: 'usgs', tgt: 'mag', s: 1, steps: ['desc', 'kmeans', 'anova'], cvars: ['latitud', 'longitud', 'prof_km'], lead: 'Agrupa los eventos por ubicación y profundidad (sin usar la magnitud) y contrasta si la magnitud difiere entre las zonas encontradas.' },
   paises: { name: 'Países: estructura común y grupos', src: 'worldbank', tgt: 'pib_pc', s: 1, steps: ['desc', 'pca', 'kmeans'], lead: 'Resume los indicadores en componentes principales y agrupa los países con las mismas variables, verificando la calidad de los grupos.' }
 };
 const SM = {
   desc: ['Estadística descriptiva', 'Explorar'], unit: ['Raíz unitaria', 'Validar'], arima: ['SARIMA y pronóstico', 'Modelar'], corr: ['Correlación', 'Explorar'], mlr: ['Regresión múltiple', 'Modelar'],
-  logit: ['Regresión logística', 'Modelar'], outl: ['Puntos influyentes', 'Validar'], het: ['Heterocedasticidad y autocorrelación', 'Validar'], kmeans: ['K-medias', 'Modelar'], anova: ['ANOVA de una vía', 'Validar'], pca: ['Componentes principales', 'Explorar']
+  plan: ['Plan óptimo de producción (programación lineal)', 'Decidir'], logit: ['Regresión logística', 'Modelar'], outl: ['Puntos influyentes', 'Validar'], het: ['Heterocedasticidad y autocorrelación', 'Validar'], kmeans: ['K-medias', 'Modelar'], anova: ['ANOVA de una vía', 'Validar'], pca: ['Componentes principales', 'Explorar']
 };
 
 /* ejecuta el módulo real (misma salida que su página) sobre la tabla activa */
 async function modHTML(id, text, setv) {
   try {
-    const m = modById(id), api = m.build(), fm = api.form; fm.els.data.value = text; fm.refresh();
+    const m = modById(id), api = m.build(), fm = api.form; if (fm.els.data) fm.els.data.value = text; if (fm.refresh) fm.refresh();
     for (const [k, v] of Object.entries(setv || {})) { const el = fm.els[k]; if (!el) continue; if (el.classList && el.classList.contains('chips')) $$('input', el).forEach(i => i.checked = v.includes(i.value)); else if (el.type === 'checkbox') el.checked = !!v; else el.value = v; }
     const out = h('div'); await api.run(out, fm.get()); return out.innerHTML;
   } catch (e) { return `<div class="err"><strong>El módulo «${esc(id)}» no pudo mostrar su salida completa.</strong> ${esc(e.message || String(e))}</div>`; }
@@ -2186,7 +2450,7 @@ STEPS.desc = async c => {
   const T = rows.find(r => r.name === c.target), miss = rows.filter(r => r.miss / tb.n > 0.05);
   f.push(tb.n >= 60 ? fnd('ok', `${tb.n} observaciones: tamaño suficiente para los pasos siguientes.`) : tb.n >= 25 ? fnd('warn', `${tb.n} observaciones: justo para modelar; las conclusiones tendrán poca potencia.`) : fnd('bad', `Solo ${tb.n} observaciones: insuficiente para modelar con respaldo.`));
   f.push(miss.length ? fnd('warn', `Faltantes superiores al 5 % en ${miss.map(r => r.name).join(', ')}; esas filas se excluyen de los modelos.`) : fnd('ok', 'Sin faltantes relevantes (5 % o menos por variable).'));
-  if (T && c.route !== 'serie') { f.push(T.out / T.n > .05 ? fnd('warn', `«${c.target}» tiene ${T.out} valores atípicos (${F(100 * T.out / T.n, 1)} %); se evaluará su influencia.`) : fnd('ok', `«${c.target}» sin proporción relevante de atípicos (${T.out}).`)); if (Math.abs(T.sk) > 1) f.push(fnd('warn', `«${c.target}» es asimétrica (coeficiente ${F(T.sk, 2)}): la media resume mal; considere una transformación logarítmica.`)); }
+  if (T && !['serie', 'decision'].includes(c.route)) { f.push(T.out / T.n > .05 ? fnd('warn', `«${c.target}» tiene ${T.out} valores atípicos (${F(100 * T.out / T.n, 1)} %); se evaluará su influencia.`) : fnd('ok', `«${c.target}» sin proporción relevante de atípicos (${T.out}).`)); if (Math.abs(T.sk) > 1) f.push(fnd('warn', `«${c.target}» es asimétrica (coeficiente ${F(T.sk, 2)}): la media resume mal; considere una transformación logarítmica.`)); }
   c.facts.n = tb.n;
   return { f, in: `Tabla activa de ${tb.n} filas × ${tb.cols.length} columnas`, dec: `Variable objetivo: «${c.target}»; ${nums.length} variables numéricas`, out: 'La misma tabla, con calidad de datos verificada', html: tbl(['Variable', 'n', 'Faltantes', 'Media', 'D.E.', 'Mín.', 'Máx.', 'Atípicos', 'Asimetría'], rows.map(r => [esc(r.name), r.n, r.miss, r.m, r.sd, r.min, r.max, r.out, r.sk]), { d: 3 }), mod: await modHTML('desc', c.text, { col: c.target }) };
 };
@@ -2212,7 +2476,7 @@ STEPS.arima = async c => {
   try { const tr = y.slice(0, n - h0), m2 = fit(tr, o), f0 = L.arimaForecast(tr, m2, h0), last = tr[tr.length - 1], real = y.slice(n - h0), rm = Math.sqrt(L.mean(real.map((v, i) => (v - f0[i].f) ** 2))), rn = Math.sqrt(L.mean(real.map(v => (v - last) ** 2))); bt = { h0, rm, rn, ratio: rm / (rn || 1e-12) }; } catch (e) { }
   if (bt) f.push(bt.ratio < 0.9 ? fnd('ok', `Validación fuera de muestra (${bt.h0} últimos datos): el error del modelo (${F(bt.rm, 3)}) es ${F(bt.ratio, 2)} veces el de repetir el último valor (${F(bt.rn, 3)}): el modelo aporta.`) : bt.ratio < 1.1 ? fnd('warn', `Validación fuera de muestra: el modelo (${F(bt.rm, 3)}) rinde igual que repetir el último valor (${F(bt.rn, 3)}); el pronóstico no mejora una predicción trivial.`) : fnd('bad', `Validación fuera de muestra: el modelo (${F(bt.rm, 3)}) rinde peor que repetir el último valor (${F(bt.rn, 3)}); no se recomienda usar su pronóstico.`));
   const e = fc[fc.length - 1], w0 = fc[0].hi - fc[0].lo, w1 = e.hi - e.lo; f.push(w1 > 3 * w0 ? fnd('warn', `La banda del pronóstico se ensancha ${F(w1 / w0, 1)} veces hasta el período ${h_}: el horizonte lejano es poco informativo.`) : fnd('ok', `Banda del 95 % razonable a ${h_} períodos (${F(e.lo, 2)} a ${F(e.hi, 2)}).`));
-  note.forEach(t => f.push(fnd('info', t))); c.facts.arima = { label, lb, bt, last: e, h: h_, y0: y[n - 1] };
+  note.forEach(t => f.push(fnd('info', t))); c.facts.arima = { label, lb, bt, last: e, h: h_, y0: y[n - 1], fc };
   const fcRows = fc.slice(0, 10).map((v, i) => [n + i + 1, v.f, v.lo, v.hi]);
   return { f, in: `Serie «${c.target}» con d = ${o.d}${c.d != null ? ' (del paso anterior)' : ''}`, dec: `${label} elegido por AIC (${F(m.aic, 1)})`, out: `Pronóstico a ${h_} períodos con validación`, html: kpis([['Modelo', label], ['AIC', m.aic], ['Ljung–Box residuos', P(lb.p)], ['Pronóstico final', e.f, `[${F(e.lo, 2)} ; ${F(e.hi, 2)}]`]]) + tbl(['Período', 'Pronóstico', 'Inferior 95 %', 'Superior 95 %'], fcRows, { d: 3 }), mod: await modHTML('arima', c.text, { col: c.target, s, p: o.p, d: o.d, q: o.q, P: o.P, D: o.D, Q: o.Q, h: h_, search: false, lags: lbH }) };
 };
@@ -2321,11 +2585,33 @@ STEPS.logit = async c => {
   return { f, in: `Predictores: ${c.preds.join(', ')}; «${c.target}» y umbral ${F(thr, 2)}`, dec: `Evento binario y regresión logística; ajuste con los primeros ${ntr} días y validación con los últimos ${n - ntr}`, out: 'Probabilidad de episodio y razones de odds', html: kpis([['Días con evento', n1, `${F(100 * n1 / n, 1)} %`], ['R² de McFadden', m.mcf], ['AUC (validación)', aucTe], ['Exactitud (validación)', cte.acc, `trivial: ${F(base, 3)}`]]) + tbl(['Término', 'Coef. (log-odds)', 'p-valor', 'Odds ratio', 'IC 95 % del OR'], nm.map((t, j) => [esc(t), m.b[j], P(m.p[j]), Math.exp(m.b[j]), `[${F(Math.exp(m.b[j] - z * m.se[j]), 3)}; ${F(Math.exp(m.b[j] + z * m.se[j]), 3)}]`]), { d: 3 }), mod: await modHTML('logit', c.text, { y: 'evento', x: c.preds, thr: 0.5, test: 0.25, seed: 5, xnew: means.join(', ') }) };
 };
 
+STEPS.plan = async c => {
+  const a = c.facts.arima; if (!a || !a.fc) throw new Error('Se necesita el pronóstico del paso anterior.');
+  const f = [], fc = a.fc, h_ = fc.length, mean = fc.map(x => Math.max(0, x.f)), hi = fc.map(x => Math.max(0, x.hi)), lo = fc.map(x => Math.max(0, x.lo));
+  const auto = !(c.cap > 0), cap = auto ? 1.05 * L.mean(mean) : c.cap, hc = Math.max(0, c.chold) / 100;
+  const build = d => { const n = 2 * h_, cv = [...Array(h_).fill(1), ...Array(h_).fill(hc)], rows = []; for (let t = 0; t < h_; t++) { const r = new Array(n).fill(0); r[t] = 1; r[h_ + t] = -1; if (t) r[h_ + t - 1] = 1; rows.push({ a: r, t: '=', b: d[t], name: `Balance ${t + 1}` }); } for (let t = 0; t < h_; t++) { const r = new Array(n).fill(0); r[t] = 1; rows.push({ a: r, t: '<=', b: cap, name: `Capacidad ${t + 1}` }); } return { c: cv, rows }; };
+  const deficit = d => { let cum = 0, w = 0; d.forEach((x, t) => { cum += x; w = Math.max(w, cum - cap * (t + 1)); }); return w; };
+  const solve = d => { const P_ = build(d), s_ = lpSolve(P_.c, P_.rows, 'min'); return { P_, s_, def: deficit(d) }; };
+  const B = solve(mean), H = solve(hi), Lo = solve(lo);
+  if (B.s_.status !== 'optimal') { f.push(fnd('bad', `No existe un plan factible ni con la demanda esperada: faltan unas ${F(B.def, 0)} unidades acumuladas de capacidad (capacidad ${F(cap, 1)} por período).`)); return { f, in: `Pronóstico a ${h_} períodos`, dec: 'Sin plan factible', out: '—', html: '', mod: '' }; }
+  const x = B.s_.x.slice(0, h_), I = B.s_.x.slice(h_), bind = x.filter(v => v >= cap - 1e-6).length, maxI = Math.max(...I), cost = B.s_.obj;
+  f.push(fnd('ok', `Plan óptimo calculado para ${h_} períodos con costo total ${F(cost, 1)} (capacidad ${F(cap, 1)} por período${auto ? ', 105 % de la demanda media pronosticada' : ''}).`));
+  f.push(bind ? fnd('info', `La capacidad es ligadora en ${bind} de ${h_} períodos: el plan debe adelantar producción y acumular hasta ${F(maxI, 1)} unidades de inventario.`) : fnd('ok', 'La capacidad no es ligadora: el plan produce justo lo necesario cada período.'));
+  f.push(H.s_.status === 'optimal' ? fnd('ok', `El plan es factible incluso con el escenario alto del intervalo de confianza del 95 %: la capacidad resiste una demanda hasta ${F(100 * (L.sum(hi) / L.sum(mean) - 1), 1)} % mayor.`) : fnd('warn', `Con el escenario alto del intervalo del 95 % la capacidad no alcanza: faltarían unas ${F(H.def, 0)} unidades acumuladas. Decidir solo con el pronóstico central expone a faltantes.`));
+  if (a.bt) f.push(a.bt.ratio < .9 ? fnd('ok', 'El pronóstico que sustenta el plan supera a repetir el último valor en la validación fuera de muestra.') : fnd('warn', 'El pronóstico no supera con claridad a repetir el último valor: no sustente el plan solo en el escenario central; use el escenario alto como referencia.'));
+  const costLo = Lo.s_.status === 'optimal' ? Lo.s_.obj : NaN, costHi = H.s_.status === 'optimal' ? H.s_.obj : NaN;
+  c.facts.plan = { cap, auto, cost, bind, maxI, hiOk: H.s_.status === 'optimal', def: H.def, costLo, costHi, h: h_, total: L.sum(mean), band: L.sum(hi) / L.sum(mean) - 1 };
+  const rows = x.slice(0, 14).map((v, t) => [t + 1, mean[t], v, I[t], v >= cap - 1e-6 ? '<b class="warn">Sí</b>' : 'No']);
+  const txt = { vnames: [...x.map((_, t) => `Producción ${t + 1}`), ...I.map((_, t) => `Inventario ${t + 1}`)].join(', '), cvec: B.P_.c.join(', '), cons: B.P_.rows.map(r => `${r.a.join(', ')}; ${r.t}; ${r.b}; ${r.name}`).join('\n') };
+  return { f, in: `Pronóstico central y banda del 95 % a ${h_} períodos (del paso anterior)`, dec: `Programación lineal: minimizar costo de producción e inventario con capacidad ${F(cap, 1)}`, out: 'Plan de producción y prueba de robustez', html: kpis([['Costo total (central)', cost], ['Costo (escenario bajo)', costLo], ['Costo (escenario alto)', H.s_.status === 'optimal' ? costHi : 'No factible'], ['Inventario máximo', maxI]]) + tbl(['Período', 'Demanda esperada', 'Producción', 'Inventario final', 'Capacidad ligadora'], rows, { d: 1 }) + (h_ > 14 ? '<p class="small">Se muestran los primeros 14 períodos.</p>' : ''), mod: await modHTML('csp', '', { tool: 'lp', obj: 'min', ...txt }) };
+};
+
 /* ---------- síntesis ---------- */
 const CONC = {
   serie: c => { const a = c.facts.arima, u = c.facts.unit; if (!a) return ['No fue posible ajustar un modelo; no hay conclusión que sostener.']; const out = []; out.push(`La serie «${c.target}» ${u && u.d === 0 ? 'es estacionaria en nivel' : `no es estacionaria y requiere ${u ? u.d : c.d} diferenciación(es)`}; se modeló como ${a.label}${a.lb.p > .05 ? ' con residuos sin autocorrelación' : ', aunque persiste autocorrelación en los residuos'}.`); out.push(a.bt ? (a.bt.ratio < .9 ? `En la validación fuera de muestra el modelo supera a la predicción ingenua (cociente de errores ${F(a.bt.ratio, 2)}), por lo que el pronóstico aporta información real.` : `En la validación fuera de muestra el modelo no supera claramente a la predicción ingenua (cociente ${F(a.bt.ratio, 2)}): el pronóstico no debe presentarse como más informativo que repetir el último valor.`) : 'No pudo realizarse la validación fuera de muestra.'); out.push(`A ${a.h} períodos el pronóstico es ${F(a.last.f, 2)} con intervalo de 95 % entre ${F(a.last.lo, 2)} y ${F(a.last.hi, 2)}; el valor actual es ${F(a.y0, 2)}.`); return out; },
   aire: c => { const m = c.facts.mlr, h = c.facts.het, o = c.facts.outl, a = c.facts.arima, out = []; if (!m) return ['No fue posible ajustar el modelo explicativo.']; out.push(`Con ${c.preds.join(', ')} el modelo explica ${F(100 * m.adj, 1)} % de la variabilidad de «${c.target}» (R² ajustado) con n = ${m.n}.`); if (h) out.push(h.robust ? (h.changed.length ? `Tras corregir por ${[h.het ? 'heterocedasticidad' : '', h.ac ? 'autocorrelación' : ''].filter(Boolean).join(' y ')}, solo ${h.kept.length ? h.kept.join(', ') : 'ninguna variable'} conserva significancia; ${h.changed.join(', ')} debe presentarse como no concluyente.` : `Se detectaron problemas de supuestos (${[h.het ? 'heterocedasticidad' : '', h.ac ? 'autocorrelación' : ''].filter(Boolean).join(' y ')}), pero con errores robustos las variables significativas se mantienen: la conclusión resiste.`) : 'Los supuestos de MCO se cumplen: la inferencia clásica es válida.'); if (o && o.n) out.push(o.flips.length || o.lost.length ? 'La conclusión es sensible a observaciones influyentes; debe acompañarse de esa salvedad.' : 'La conclusión no depende de observaciones atípicas.'); if (a) out.push(`Para pronóstico se usó ${a.label}: ${a.bt && a.bt.ratio < .9 ? 'supera a la predicción ingenua en validación fuera de muestra' : 'no supera con claridad a la predicción ingenua en validación fuera de muestra'}; a ${a.h} días el valor esperado es ${F(a.last.f, 2)} (95 %: ${F(a.last.lo, 2)} a ${F(a.last.hi, 2)}).`); return out; },
   episodio: c => { const l = c.facts.logit, out = []; if (!l) return ['No fue posible ajustar el modelo logístico.']; out.push(`Un episodio (${c.target} ≥ ${F(l.thr, 2)}) ocurrió en ${l.n1} de ${l.n} días. Se estimó su probabilidad con ${c.preds.join(', ')}.`); out.push(l.sep ? 'El ajuste presenta separación casi perfecta: no se deben interpretar los coeficientes.' : l.plr < .05 ? `El modelo es mejor que el modelo nulo; ${l.sig.length ? `son significativas ${l.sig.join(', ')}; ${l.or.filter(o => l.sig.includes(o[0])).map(o => `un aumento de una unidad en ${o[0]} multiplica las odds del episodio por ${F(o[1], 2)}`).join('; ')}` : 'ningún predictor es significativo por separado'}.` : 'El modelo no mejora al modelo nulo: no hay evidencia de que estas variables anticipen el episodio.'); out.push(isNaN(l.aucTe) ? 'No se pudo evaluar el desempeño en los últimos días por falta de variación del evento.' : l.few ? `La validación (últimos ${l.nTe} días) tiene muy pocos casos de una de las clases: no permite juzgar el desempeño del modelo. Los odds ratio describen el período ajustado, pero no hay evidencia de que anticipe episodios nuevos.` : `En los últimos ${l.nTe} días, no usados para ajustar, el AUC fue ${F(l.aucTe, 2)} y la exactitud ${F(100 * l.acc, 1)} % frente a ${F(100 * l.base, 1)} % de la clasificación trivial: ${l.aucTe >= .8 && l.acc > l.base + .02 ? 'sirve como alerta temprana' : l.aucTe >= .65 ? 'sirve solo como apoyo, no como regla de decisión' : 'no debe usarse para anticipar episodios'}.`); return out; },
+  decision: c => { const a = c.facts.arima, p = c.facts.plan, u = c.facts.unit, out = []; if (!a) return ['No fue posible pronosticar la demanda.']; out.push(`La demanda «${c.target}» ${u && u.d === 0 ? 'es estacionaria en nivel' : 'no es estacionaria y se modeló diferenciada'}; se pronosticó con ${a.label} a ${a.h} períodos${a.bt ? (a.bt.ratio < .9 ? ', con mejor desempeño que la predicción ingenua en la validación' : ', sin superar claramente a la predicción ingenua en la validación') : ''}.`); if (!p) { out.push('No fue posible construir un plan de producción factible.'); return out; } out.push(`El plan óptimo (programación lineal, capacidad ${F(p.cap, 1)} por período) tiene costo total ${F(p.cost, 1)}${p.bind ? ` y exige adelantar producción en ${p.bind} períodos, con inventario máximo de ${F(p.maxI, 1)} unidades` : ' y produce justo lo necesario cada período'}.`); out.push(p.hiOk ? 'El plan resiste el escenario alto del intervalo del 95 %: la decisión es robusta frente a la incertidumbre del pronóstico.' : `El plan no resiste el escenario alto del intervalo del 95 % (faltarían unas ${F(p.def, 0)} unidades): se recomienda ampliar la capacidad o definir un inventario de seguridad antes de comprometer el plan.`); return out; },
   sismos: c => { const k = c.facts.km, a = c.facts.anova, out = []; if (!k) return ['No fue posible agrupar los eventos.']; out.push(`Los eventos se agrupan en ${k.k} zonas según ${k.vars.join(', ')} (silueta ${F(k.sil, 2)}${k.sil >= .5 ? ': separación clara' : k.sil >= .25 ? ': separación moderada' : ': separación débil'}).`); if (a) out.push(a.p < .05 ? `La magnitud ${a.eta < .06 ? 'difiere de forma estadísticamente detectable pero pequeña' : 'difiere de forma apreciable'} entre zonas (F = ${F(a.Fv, 2)}; p = ${P(a.p)}; η² = ${F(a.eta, 3)}).` : `No hay evidencia de que la magnitud difiera entre zonas (p = ${P(a.p)}).`); return out; },
   paises: c => { const p = c.facts.pca, k = c.facts.km, out = []; if (!p || !k) return ['No fue posible completar la ruta.']; out.push(`Dos componentes resumen el ${F(100 * p.cum2, 1)} % de la variabilidad de ${p.n} países; las variables que más pesan en el primero son ${p.top.join(', ')}.`); out.push(`Con las mismas variables se identifican ${k.k} grupos de países (silueta ${F(k.sil, 2)}${k.sil >= .5 ? ': grupos nítidos' : k.sil >= .25 ? ': estructura moderada' : ': estructura débil'}), de tamaños ${k.sizes.join(', ')}.`); return out; }
 };
@@ -2357,12 +2643,12 @@ reg({
   build() {
     let META = null;
     const rf = Form('rt-route', [{ k: 'route', t: 'sel', label: 'Ruta de análisis', opts: Object.entries(ROUTES).map(([k, r]) => [k, r.name]), val: 'serie' }, { k: 'src', t: 'sel', label: 'Fuente de datos', opts: [...Object.entries(SRC).map(([k, s]) => [k, s.name]), ['manual', 'Pegar o cargar un CSV propio']], val: 'mindicador' }]);
-    const pf = Form('rt-par', [{ k: 'data', t: 'data', label: 'Tabla activa (CSV con encabezado)', sample: '', rows: 8 }, { k: 'target', t: 'col', from: 'data', label: 'Variable objetivo', def: 'last' }, { k: 's', t: 'num', label: 'Período estacional (1 = ninguno; 7 = semanal en datos diarios)', val: 1, min: 1, max: 52, step: 1 }, { k: 'h', t: 'num', label: 'Horizonte de pronóstico (períodos)', val: 14, min: 1, max: 60, step: 1 }, { k: 'umbral', t: 'num', label: 'Umbral del episodio (solo ruta de episodios; misma unidad que la variable objetivo)', val: 25 }]);
+    const pf = Form('rt-par', [{ k: 'data', t: 'data', label: 'Tabla activa (CSV con encabezado)', sample: '', rows: 8 }, { k: 'target', t: 'col', from: 'data', label: 'Variable objetivo', def: 'last' }, { k: 's', t: 'num', label: 'Período estacional (1 = ninguno; 7 = semanal en datos diarios)', val: 1, min: 1, max: 52, step: 1 }, { k: 'h', t: 'num', label: 'Horizonte de pronóstico (períodos)', val: 14, min: 1, max: 60, step: 1 }, { k: 'cap', t: 'num', label: 'Capacidad de producción por período (solo ruta de decisión; 0 = automática, 105 % de la demanda media pronosticada)', val: 0, min: 0 }, { k: 'chold', t: 'num', label: 'Costo de mantener inventario (% del costo unitario por período)', val: 5, min: 0, max: 100 }, { k: 'umbral', t: 'num', label: 'Umbral del episodio (solo ruta de episodios; misma unidad que la variable objetivo)', val: 25 }]);
     $$('button', pf.el).filter(b => b.textContent === 'Restaurar ejemplo').forEach(b => b.remove());
     const sf = {}, sbox = h('div', { class: 'rt-src' }); Object.entries(SRC).forEach(([k, s]) => { sf[k] = Form('rt-s-' + k, s.fields); sf[k].el.hidden = true; sbox.append(sf[k].el); });
     const desc = h('p', { class: 'small', id: 'rt-desc' }), status = h('p', { class: 'small', role: 'status', id: 'rt-status' }), flow = h('p', { class: 'rt-prev small' });
     const show = () => { const src = rf.els.src.value; Object.keys(sf).forEach(k => sf[k].el.hidden = k !== src); const r = ROUTES[rf.els.route.value]; desc.textContent = r.lead; flow.innerHTML = '<b>Secuencia:</b> ' + r.steps.map(id => SM[id][0]).join(' → ') + ' → conclusión.'; };
-    const setTarget = () => { const r = ROUTES[rf.els.route.value], names = [...pf.els.target.options].map(o => o.value); if (r.tgt && names.includes(r.tgt)) pf.els.target.value = r.tgt; else if (rf.els.route.value === 'serie' && names.length) pf.els.target.value = names[names.length - 1]; };
+    const setTarget = () => { const r = ROUTES[rf.els.route.value], names = [...pf.els.target.options].map(o => o.value); if (r.tgt && names.includes(r.tgt)) pf.els.target.value = r.tgt; else if (['serie', 'decision'].includes(rf.els.route.value) && names.length) pf.els.target.value = names[names.length - 1]; };
     const setData = (r, meta) => { pf.els.data.value = r.csv; pf.refresh(); META = { ...meta, fecha: new Date().toLocaleString('es-CL') }; setTarget(); };
     rf.els.route.addEventListener('change', () => { const r = ROUTES[rf.els.route.value]; rf.els.src.value = r.src; pf.els.s.value = r.s; show(); setTarget(); status.textContent = ''; });
     rf.els.src.addEventListener('change', show);
@@ -2382,7 +2668,7 @@ reg({
       form, async run(out, v) {
         if (!v.data.trim()) throw new Error('Cargue datos primero: use «Obtener datos en línea», la muestra sintética o pegue un CSV.');
         const R = ROUTES[v.route], tb = L.parseTable(v.data); if (!colOf(tb, v.target) || !colOf(tb, v.target).num) throw new Error('La variable objetivo debe ser una columna numérica.');
-        const c = { route: v.route, tb, text: v.data, target: v.target, s: v.s, h: v.h, umbral: v.umbral, facts: {}, meta: META || { fuente: 'Datos ingresados por el usuario', manual: true, fecha: new Date().toLocaleString('es-CL') } }, res = [];
+        const c = { route: v.route, tb, text: v.data, target: v.target, s: v.s, h: v.h, umbral: v.umbral, cap: v.cap, chold: v.chold, facts: {}, meta: META || { fuente: 'Datos ingresados por el usuario', manual: true, fecha: new Date().toLocaleString('es-CL') } }, res = [];
         for (let i = 0; i < R.steps.length; i++) { const id = R.steps[i]; out.innerHTML = `<div class="empty">Paso ${i + 1} de ${R.steps.length}: ${esc(SM[id][0])}…</div>`; await new Promise(r => setTimeout(r, 20)); let r; try { r = await STEPS[id](c); } catch (e) { r = { f: [fnd('bad', `El paso falló: ${e.message || e}`)], in: '', dec: 'Paso interrumpido', out: '—', html: '', mod: '' }; } r.id = id; res.push(r); }
         out.innerHTML = synth(c, res);
       }
@@ -2558,8 +2844,8 @@ const GCOL = {}; GROUPS.forEach((g, i) => GCOL[g] = (i % 6) + 1);
 const modLevel = m => String(m.ref).startsWith('Básico') ? 'Básico' : 'Avanzado';
 const modStatus = m => { const st = MOD_STATE[m.id], inRep = REPORT.sections.some(s => s.mod === m.id); return st && st.err ? 'error' : inRep ? 'informe' : st ? 'ejecutado' : 'pendiente'; };
 const STATUS_TXT = { pendiente: 'Sin ejecutar', ejecutado: 'Ejecutado', informe: 'En informe', error: 'Con error' };
-const SHORT = { desc: 'Estadística descriptiva', test: 'Tests e intervalos', corr: 'Correlación', slr: 'Regresión simple', anova: 'ANOVA', pca: 'Componentes principales', mlr: 'Regresión múltiple', sel: 'Selección de variables', reg: 'Ridge, LASSO, PCR, PLS', outl: 'Atípicos y robustez', het: 'Heterocedasticidad', svr: 'Regresión SVM', boot: 'Bootstrap', aws: 'Herramientas AWS', arima: 'SARIMA y pronóstico', unit: 'Raíz unitaria', sql: 'SQL', spark: 'Spark', kmeans: 'K-medias y jerárquico', forest: 'Random Forest y XGBoost', logit: 'Regresión logística', svm: 'SVM', nn: 'Redes neuronales', text: 'Minería de textos', recsys: 'Recomendación', cnn: 'Redes convolucionales', llm: 'IA generativa (LLM)', ruta: 'Rutas encadenadas' };
-const RSHORT = { serie: 'Serie de tiempo', aire: 'Aire: regresión', episodio: 'Aire: episodios', sismos: 'Sismicidad', paises: 'Países' };
+const SHORT = { desc: 'Estadística descriptiva', test: 'Tests e intervalos', corr: 'Correlación', slr: 'Regresión simple', anova: 'ANOVA', pca: 'Componentes principales', mlr: 'Regresión múltiple', sel: 'Selección de variables', reg: 'Ridge, LASSO, PCR, PLS', outl: 'Atípicos y robustez', het: 'Heterocedasticidad', svr: 'Regresión SVM', boot: 'Bootstrap', aws: 'Herramientas AWS', arima: 'SARIMA y pronóstico', unit: 'Raíz unitaria', sql: 'SQL', spark: 'Spark', kmeans: 'K-medias y jerárquico', forest: 'Random Forest y XGBoost', logit: 'Regresión logística', svm: 'SVM', nn: 'Redes neuronales', text: 'Minería de textos', recsys: 'Recomendación', cnn: 'Redes convolucionales', llm: 'IA generativa (LLM)', meta: 'Metaheurísticas', csp: 'Restricciones y LP', busq: 'Búsqueda autónoma', plan: 'Plan óptimo (LP)', ruta: 'Rutas encadenadas' };
+const RSHORT = { serie: 'Serie de tiempo', aire: 'Aire: regresión', episodio: 'Aire: episodios', sismos: 'Sismicidad', paises: 'Países', decision: 'Pronóstico → decisión' };
 const wrap2 = (t, n = 16) => { const w = t.split(' '), a = ['']; w.forEach(x => { if ((a[a.length - 1] + ' ' + x).trim().length > n && a[a.length - 1]) a.push(x); else a[a.length - 1] = (a[a.length - 1] + ' ' + x).trim(); }); return a.slice(0, 2); };
 
 function filteredIds() {
@@ -2596,7 +2882,7 @@ function diagram() {
   /* ruta superpuesta */
   const R = ROUTES[FIL.ruta]; let rp = '', rb = '';
   if (R) {
-    const pts = R.steps.filter(id => pos[id]);
+    const SM_ = { plan: 'csp' }, pts = R.steps.map(id => SM_[id] || id).filter(id => pos[id]);
     const chanY = p => TOP + p.ri * PITCH - 21; let d = `M ${BUSX} ${yc(pos[pts[0]].ri)} H ${pos[pts[0]].x}`;
     for (let k = 1; k < pts.length; k++) {
       const a = pos[pts[k - 1]], b = pos[pts[k]], ya = yc(a.ri), yb = yc(b.ri), xa = a.x + BW, xm = xa + GX / 2;
@@ -2604,7 +2890,7 @@ function diagram() {
       else if (a.ri === b.ri) { const cy = chanY(a); d += ` H ${xm} V ${cy} H ${b.x - GX / 2} V ${yb} H ${b.x}`; }
       else { const cy = chanY(b); d += ` H ${xm} V ${cy} H ${b.x - GX / 2} V ${yb} H ${b.x}`; }
     }
-    const lp = pos[pts[pts.length - 1]], ly = yc(lp.ri); d += ` H ${lp.x + BW + GX - 6}`;
+    const lp = pos[pts[pts.length - 1]], ly = yc(lp.ri); d += ` H ${lp.x + BW + 14}`;
     rp += `<path class="rpath" d="${d}" marker-end="url(#ahr)"/>`;
     pts.forEach((id, k) => { const p = pos[id]; rb += `<g class="rbadge"><circle cx="${p.x + 2}" cy="${p.y + 2}" r="10"/><text x="${p.x + 2}" y="${p.y + 6}" text-anchor="middle">${k + 1}</text></g>`; });
     rb += `<text class="rend" x="${lp.x + BW - 4}" y="${lp.y + BH + 13}" text-anchor="end">conclusión ▸</text>`;
@@ -2666,10 +2952,11 @@ const TEMARIO = [
   ['Avanzado', '4', 'Introducción a SQL', ['sql']], ['Avanzado', '5', 'Introducción a Spark', ['spark']], ['Avanzado', '6', 'Algoritmo de K-medias y clustering jerárquico', ['kmeans']],
   ['Avanzado', '7', 'Random Forest y XGBoost', ['forest']], ['Avanzado', '8', 'Modelo de regresión logística', ['logit']], ['Avanzado', '9', 'Máquinas de vectores de soporte', ['svm']],
   ['Avanzado', '10', 'Redes neuronales', ['nn']], ['Avanzado', '11', 'Text mining y web scraping', ['text']], ['Avanzado', '12', 'Herramientas de AWS: S3, IAM, VPC, SageMaker', ['aws']],
-  ['Avanzado', '13', 'Sistemas de recomendación', ['recsys']], ['Avanzado', '14', 'Deep Learning: redes convolucionales', ['cnn']], ['Avanzado', '15', 'Inteligencia artificial para lenguaje natural (LLM)', ['llm']]
+  ['Avanzado', '13', 'Sistemas de recomendación', ['recsys']], ['Avanzado', '14', 'Deep Learning: redes convolucionales', ['cnn']], ['Avanzado', '15', 'Inteligencia artificial para lenguaje natural (LLM)', ['llm']],
+  ['Folleto IA', '3', 'Inteligencia artificial en optimización: metaheurísticas, restricciones y búsqueda autónoma', ['meta', 'csp', 'busq']]
 ];
 const ALC = { C: ['Cálculo', 'good'], P: ['Parcial', 'warn'], S: ['Simulación', 'warn'], R: ['Referencia', 'warn'] };
-const ALCN = ['C', 'C', 'C', 'C', 'C', 'P', 'C', 'S', 'S', 'C', 'C', 'C', 'C', 'C', 'P', 'R', 'C', 'C', 'C'];
+const ALCN = ['C', 'C', 'C', 'C', 'C', 'P', 'C', 'S', 'S', 'C', 'C', 'C', 'C', 'C', 'P', 'R', 'C', 'C', 'C', 'C'];
 const ALCT = { 5: 'Bootstrap calcula; EC2 solo como estimador de costo y tiempo', 7: 'Consultas SELECT sobre tablas editables; no hay conexión a SQL Server', 8: 'Operaciones sobre un DataFrame de ejemplo con el código PySpark equivalente', 14: 'Extrae datos de HTML pegado; no hay scraping en vivo (el navegador no lo permite)', 15: 'Calculadora de subredes VPC, políticas IAM y costos; no cubre S3 ni SageMaker' };
 const pages = new Map(); let current = null;
 const modById = id => MODS.find(m => m.id === id);
@@ -2694,7 +2981,7 @@ function route() { let id = (location.hash || '#inicio').slice(1); if (id === 's
 
 /* ---------- inicio ---------- */
 function buildHome() {
-  const home = $('#home'); const cov = TEMARIO.map(([lvl, n, t, ids], k) => `<tr><td class="l"><b>${lvl === 'Básico' ? 'B' : 'A'}${n}</b></td><td class="l">${esc(t)}</td><td class="l"><b class="${ALC[ALCN[k]][1]}">${ALC[ALCN[k]][0]}</b>${ALCT[k] ? `<br><small class="mut">${esc(ALCT[k])}</small>` : ''}</td><td class="l">${ids.map(i => `<a class="tag" href="#${i}">${esc(modById(i).title.split(':')[0].split(',')[0])}</a>`).join(' ')}</td></tr>`).join('');
+  const home = $('#home'); const cov = TEMARIO.map(([lvl, n, t, ids], k) => `<tr><td class="l"><b>${lvl === 'Básico' ? 'B' : lvl === 'Avanzado' ? 'A' : 'IA'}${n}</b></td><td class="l">${esc(t)}</td><td class="l"><b class="${ALC[ALCN[k]][1]}">${ALC[ALCN[k]][0]}</b>${ALCT[k] ? `<br><small class="mut">${esc(ALCT[k])}</small>` : ''}</td><td class="l">${ids.map(i => `<a class="tag" href="#${i}">${esc(modById(i).title.split(':')[0].split(',')[0])}</a>`).join(' ')}</td></tr>`).join('');
   const P_ = PROFILE, fact = (k, v) => v ? `<dt>${k}</dt><dd>${esc(v)}</dd>` : '';
   home.innerHTML = `
   <header class="hero"><svg class="sigline" viewBox="0 0 600 60" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,40 40,40 60,12 85,50 110,26 140,34 190,34 215,8 240,48 270,30 330,30 360,14 385,46 410,32 470,32 495,10 520,44 545,28 600,28"/></svg>
